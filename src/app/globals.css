@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 6% 2%;
+    --foreground: 0 0% 98%;
+    --card: 240 5% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 188 94% 43%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 64%;
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 188 94% 43%;
+    --radius: 0.75rem;
+    --echon-cyan: 188 94% 43%;
+    --echon-violet: 262 83% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image: radial-gradient(
+        1200px 600px at 10% -10%,
+        hsl(var(--echon-violet) / 0.18),
+        transparent 60%
+      ),
+      radial-gradient(
+        900px 500px at 90% 0%,
+        hsl(var(--echon-cyan) / 0.12),
+        transparent 55%
+      ),
+      linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+  }
+}
+
+html.echonx-zen body {
+  filter: brightness(0.42) saturate(0.7);
+  transition: filter 320ms ease;
+}
+
+html.echonx-zen .floating-listen-player {
+  filter: none;
+}
