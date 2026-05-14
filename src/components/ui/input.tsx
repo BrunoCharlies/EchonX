@@ -1,9 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-
-export type InputProps = React.ComponentPropsWithoutRef<"input">;
+export type InputProps = React.ComponentPropsWithoutRef<"input"> & {
+  // props adicionais se existirem
+};
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
   return (

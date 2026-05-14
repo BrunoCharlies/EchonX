@@ -1,9 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-
-export type TextareaProps = React.ComponentPropsWithoutRef<"textarea">;
+export type TextareaProps = React.ComponentPropsWithoutRef<"textarea"> & {
+  // props adicionais se existirem
+};
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, ...props }, ref) => {
   return (
