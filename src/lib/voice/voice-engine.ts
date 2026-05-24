@@ -1,4 +1,5 @@
-import { prepareMirroredPostForSpeech } from "@/lib/voice/speech-text";
+import { prepareLibrarySegmentForSpeech, prepareMirroredPostForSpeech } from "@/lib/voice/speech-text";
+import { isAppleMobileBrowser, primeWebSpeechForUserGesture } from "@/lib/voice/ios-speech-unlock";
 import {
   isCompatibleSpeechVoiceLang,
   isEuropeanPortugueseVoice,
@@ -17,6 +18,8 @@ export type SpeakOptions = {
   rate?: number;
   /** Output level 0–1 (Web Speech utterance.volume). */
   volume?: number;
+  /** Gutenberg / library reader — skip Audiopost 220-char cap and X intro parsing. */
+  libraryReading?: boolean;
   onEnd?: () => void;
 };
 
@@ -175,11 +178,16 @@ export async function createVoiceEngine(): Promise<VoiceEngine> {
       finishCurrentSpeech();
       cancelSpeechSynthesis();
       window.speechSynthesis.resume();
+      if (isAppleMobileBrowser()) {
+        primeWebSpeechForUserGesture();
+      }
       const lang = normalizeSpeechLocale(options?.lang ?? "en-US");
       const voices = await loadVoices();
       const selectedVoice = pickVoice(voices, lang, options?.voiceURI);
 
-      const speechText = prepareMirroredPostForSpeech(text);
+      const speechText = options?.libraryReading
+        ? prepareLibrarySegmentForSpeech(text)
+        : prepareMirroredPostForSpeech(text);
       if (!speechText) {
         options?.onEnd?.();
         return;
@@ -230,6 +238,9 @@ export async function createVoiceEngine(): Promise<VoiceEngine> {
           resolveCurrentSpeech = finish;
           utterance.onend = finish;
           utterance.onerror = fail;
+          if (isAppleMobileBrowser()) {
+            window.speechSynthesis.resume();
+          }
           window.speechSynthesis.speak(utterance);
 
           abortInterval = setInterval(() => {

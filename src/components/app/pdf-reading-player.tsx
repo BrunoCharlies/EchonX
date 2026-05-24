@@ -20,6 +20,7 @@ import {
   libraryQuotaErrorMessage,
 } from "@/lib/voice/library-voice-session";
 import { formatLibraryQuotaShort } from "@/lib/billing/library-quota-policy";
+import { primeLibraryPlaybackForUserGesture } from "@/lib/voice/ios-speech-unlock";
 import type { VoiceEngine } from "@/lib/voice/voice-engine";
 import { cn } from "@/lib/utils";
 
@@ -300,10 +301,12 @@ export const PdfReadingPlayer = forwardRef<
           : segment.text.slice(0, 80),
       });
 
+      const speakVolume = libraryCtx ? libraryBarVolumeRef.current : 1;
       await resolved.engine.speak(segment.text, {
         lang,
         rate: libraryCtx ? libraryBarRateRef.current : 1,
-        volume: libraryCtx ? libraryBarVolumeRef.current : 1,
+        volume: speakVolume > 0 ? speakVolume : 1,
+        libraryReading: true,
       });
     } catch (err) {
       if (runId !== runIdRef.current || activeSourceIdRef.current !== sourceId) return;
@@ -384,6 +387,8 @@ export const PdfReadingPlayer = forwardRef<
   }
 
   async function onPlayPause() {
+    primeLibraryPlaybackForUserGesture();
+
     if (readerState === "loading") {
       pendingPlayRef.current = true;
       onPlaybackUpdateRef.current?.({ preview: "Loading book…" });

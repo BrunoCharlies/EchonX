@@ -31,6 +31,7 @@ import {
   LIBRARY_READING_LANGUAGES,
 } from "@/lib/voice/library-playback-settings";
 import { LibraryQuotaStrip } from "@/components/app/library-quota-strip";
+import { primeLibraryPlaybackForUserGesture } from "@/lib/voice/ios-speech-unlock";
 
 export function LibraryBottomBar({
   onPlayPause,
@@ -113,7 +114,10 @@ export function LibraryBottomBar({
             className={cn(audiopostPlayBtnClass, "h-10 w-10 shrink-0")}
             aria-label={isPlaying ? "Pause library reading" : "Play library reading"}
             disabled={!playback.canControl && playback.readerState === "empty"}
-            onClick={onPlayPause}
+            onClick={() => {
+              primeLibraryPlaybackForUserGesture();
+              onPlayPause();
+            }}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
           </Button>
@@ -205,7 +209,10 @@ export function LibraryBottomBar({
               className={cn(audiopostPlayBtnClass, "h-14 w-14 -translate-y-0.5")}
               aria-label={isPlaying ? "Pause" : "Play"}
               disabled={!playback.canControl && playback.readerState === "empty"}
-              onClick={onPlayPause}
+              onClick={() => {
+                primeLibraryPlaybackForUserGesture();
+                onPlayPause();
+              }}
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
             </Button>

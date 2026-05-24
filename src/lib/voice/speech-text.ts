@@ -44,6 +44,11 @@ export function prepareTextForSpeech(text: string) {
   return truncateForSpeech(stripTextForSpeech(text));
 }
 
+/** Library PDF / Gutenberg segments — no 220-char cap; light normalize only. */
+export function prepareLibrarySegmentForSpeech(text: string) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
 /** Mirrored X queue line: English intro + strip + truncate for TTS. */
 export function prepareMirroredPostForSpeech(body: string) {
   return prepareTextForSpeech(normalizeMirroredPostBodyForListen(body));

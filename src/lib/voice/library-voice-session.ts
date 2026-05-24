@@ -1,4 +1,5 @@
 import { createFishVoiceEngine } from "@/lib/voice/fish-voice-engine";
+import { isAppleMobileBrowser } from "@/lib/voice/ios-speech-unlock";
 import { createVoiceEngine, type VoiceEngine } from "@/lib/voice/voice-engine";
 import type { LibraryQuotaExhaustedAction } from "@/lib/billing/library-quota-policy";
 import type { LibraryPlanTier } from "@/lib/billing/library-plans";
@@ -52,6 +53,9 @@ export function getCachedLibraryVoiceStatus(): LibraryVoiceStatus | null {
 }
 
 function backendKey(status: LibraryVoiceStatus): "fish" | "web" {
+  if (typeof navigator !== "undefined" && isAppleMobileBrowser()) {
+    return "web";
+  }
   return status.backend === "fish-s2-pro" && status.fishActive ? "fish" : "web";
 }
 

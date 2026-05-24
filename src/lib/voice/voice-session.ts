@@ -33,9 +33,9 @@ export function getActiveVoicePlaybackOwner() {
 export async function claimVoicePlayback(owner: VoicePlaybackOwner) {
   const previousOwner = activeOwner;
   activeOwner = owner;
-  await stopSharedVoicePlayback();
 
   if (previousOwner && previousOwner !== owner) {
+    await stopSharedVoicePlayback();
     for (const listener of getListenerSet(previousOwner)) {
       listener(owner);
     }
