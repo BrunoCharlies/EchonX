@@ -9,7 +9,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="admin-shell__header-inner">
           <div className="flex items-center gap-2.5">
             <Link href="/app/explore" className="inline-flex shrink-0">
-              <EchonXLogo imageClassName="h-6" />
+              <EchonXLogo size="compact" />
             </Link>
             <span className="admin-shell__badge">Admin</span>
           </div>

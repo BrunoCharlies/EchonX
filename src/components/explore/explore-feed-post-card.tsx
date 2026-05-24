@@ -107,7 +107,7 @@ export function ExploreFeedPostCard({ post, locale, viewerId, playingPostId, onP
             <Image src={post.author.avatarPath} alt="" fill className="object-cover" sizes="44px" unoptimized />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <EchonXLogo imageClassName="h-5" />
+              <EchonXLogo size="mini" />
             </div>
           )}
         </Link>

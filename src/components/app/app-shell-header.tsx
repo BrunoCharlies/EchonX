@@ -19,7 +19,7 @@ export async function AppShellHeader() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto] lg:gap-4 lg:px-8">
         <div className="min-w-0">
           <Link href="/app/explore" className="inline-flex items-center">
-            <EchonXLogo imageClassName="h-7" />
+            <EchonXLogo />
           </Link>
         </div>
         <ProfileGlobalSearch className="mx-auto w-full max-w-md lg:max-w-xs xl:max-w-sm" />

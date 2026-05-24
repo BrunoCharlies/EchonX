@@ -7,7 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted/30 px-4 py-10">
       <div className="mb-6 flex w-full max-w-sm items-center justify-between">
         <Link href="/" className="inline-flex items-center">
-          <EchonXLogo imageClassName="h-7" />
+          <EchonXLogo />
         </Link>
         <LanguageSelector compact />
       </div>

@@ -115,7 +115,7 @@ export function CommentModal({
                   <Image src={post.avatarPath} alt="" fill className="object-cover" sizes="40px" unoptimized />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center px-1">
-                    <EchonXLogo imageClassName="h-5" />
+                    <EchonXLogo size="mini" />
                   </div>
                 )}
               </div>
@@ -202,7 +202,7 @@ function CommentNode({
             <Image src={author.avatar_path} alt="" fill className="object-cover" sizes="32px" unoptimized />
           ) : (
             <div className="flex h-full w-full items-center justify-center px-1">
-              <EchonXLogo imageClassName="h-4" />
+              <EchonXLogo size="mini" />
             </div>
           )}
         </div>

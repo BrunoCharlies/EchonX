@@ -79,7 +79,7 @@ export function NativeTransmissionCard({
             <Image src={profile.avatar_path} alt="" fill className="object-cover" sizes="44px" unoptimized />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-zinc-900">
-              <EchonXLogo imageClassName="h-5" />
+              <EchonXLogo size="mini" />
             </div>
           )}
         </div>

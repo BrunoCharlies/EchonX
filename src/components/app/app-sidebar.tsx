@@ -63,7 +63,7 @@ export function AppSidebar({
         style={{ height: APP_SHELL_HEADER_HEIGHT_PX }}
       >
         <Link href="/app/explore" className="inline-flex min-w-0" title={t.nav.explore}>
-          <EchonXLogo imageClassName={cn("h-7", collapsed && "h-6")} />
+          <EchonXLogo size={collapsed ? "compact" : "header"} />
         </Link>
       </div>
 

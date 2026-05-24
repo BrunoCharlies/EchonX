@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EchonXLogo } from "@/components/brand/echonx-logo";
+import { EchonXFooterLogo } from "@/components/brand/echonx-footer-logo";
 
 const PRODUCT_LINKS = [
   { href: "/app/explore", label: "Explore" },
@@ -34,7 +34,7 @@ export async function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
-            <EchonXLogo imageClassName="h-7" href="/" />
+            <EchonXFooterLogo href="/" />
             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
               Profile-first social listening. Hear creators, follow with intention, and grow communities around voice.
             </p>

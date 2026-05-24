@@ -204,7 +204,7 @@ export function LegacyPublicProfileLayout({
                         <Image src={profile.avatar_path} alt="" fill className="object-cover" sizes="44px" unoptimized />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center px-1">
-                          <EchonXLogo imageClassName="h-5" />
+                          <EchonXLogo size="mini" />
                         </div>
                       )}
                     </div>
