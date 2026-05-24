@@ -20,6 +20,7 @@ import {
   libraryQuotaErrorMessage,
 } from "@/lib/voice/library-voice-session";
 import { formatLibraryQuotaShort } from "@/lib/billing/library-quota-policy";
+import { isLibraryDocumentProxyUrl } from "@/lib/library/library-document-proxy";
 import { isAppleMobileBrowser, primeLibraryPlaybackForUserGesture } from "@/lib/voice/ios-speech-unlock";
 import type { VoiceEngine } from "@/lib/voice/voice-engine";
 import { cn } from "@/lib/utils";
@@ -183,8 +184,50 @@ async function extractPdfSegments(file: File): Promise<PdfSegment[]> {
   return extractPdfSegmentsFromBuffer(await file.arrayBuffer());
 }
 
+const LIBRARY_LOAD_TIMEOUT_MS = 90_000;
+
+function mergeAbortSignals(primary?: AbortSignal, timeoutMs = LIBRARY_LOAD_TIMEOUT_MS) {
+  if (typeof AbortSignal.timeout === "function") {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    if (!primary) return timeoutSignal;
+    return AbortSignal.any([primary, timeoutSignal]);
+  }
+  return primary;
+}
+
+/** Qubic / recommended PDFs: server extracts text (iOS Safari cannot rely on client pdf.js). */
+async function loadProxiedPdfAsTextSegments(sourceUrl: string, signal?: AbortSignal) {
+  const separator = sourceUrl.includes("?") ? "&" : "?";
+  const textUrl = `${sourceUrl}${separator}extract=text`;
+  const response = await fetch(textUrl, { cache: "no-store", signal });
+  if (!response.ok) {
+    let detail = "Unable to load the PDF for reading.";
+    try {
+      const payload = (await response.json()) as { error?: string };
+      if (payload.error) detail = payload.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+
+  const segments = textToSegments(await response.text());
+  if (!segments.length) {
+    throw new Error(
+      "No readable text in this PDF. If this is a scan, try another title or open on desktop.",
+    );
+  }
+  return segments;
+}
+
 async function loadReadingSource(source: PdfReadingSource, signal?: AbortSignal) {
-  const response = await fetch(source.sourceUrl, { cache: "no-store", signal });
+  const loadSignal = mergeAbortSignals(signal);
+
+  if (source.sourceType === "pdf" && isLibraryDocumentProxyUrl(source.sourceUrl)) {
+    return loadProxiedPdfAsTextSegments(source.sourceUrl, loadSignal);
+  }
+
+  const response = await fetch(source.sourceUrl, { cache: "no-store", signal: loadSignal });
   if (!response.ok) {
     throw new Error("Unable to load the selected reading.");
   }
