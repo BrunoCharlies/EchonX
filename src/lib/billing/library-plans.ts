@@ -137,3 +137,11 @@ export const LIBRARY_PLANS: LibraryPlan[] = [
 export function getLibraryPlanById(tier: LibraryPlanTier): LibraryPlan {
   return LIBRARY_PLANS.find((p) => p.id === tier) ?? LIBRARY_PLANS[0];
 }
+
+export function libraryPlanPriceLabel(plan: LibraryPlan): string {
+  return `$${plan.priceUsd}/mo`;
+}
+
+export function libraryPlanBillingCallbackUrl(planId: LibraryPlanTier): string {
+  return `/app/settings/billing?library=${encodeURIComponent(planId)}#library-premium`;
+}

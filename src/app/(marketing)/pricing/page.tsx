@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
-import { Check, ShieldCheck } from "lucide-react";
+import { BookOpen, Check, ShieldCheck } from "lucide-react";
 import { AI_ANALYSIS_PLAN } from "@/lib/billing/ai-plans";
+import {
+  LIBRARY_PLANS,
+  libraryPlanBillingCallbackUrl,
+  libraryPlanPriceLabel,
+} from "@/lib/billing/library-plans";
 import { PLANS, planPriceLabel } from "@/lib/plans";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +16,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Choose Free, Starter, Popular, or Pro. EchonX keeps native profiles unlimited while external X listening scales with your plan.",
+    "Audiopost plans (Free–Pro), Library Premium for Fish voice on books and PDFs, and optional AI Context Analysis.",
 };
 
 export default function PricingPage() {
@@ -25,7 +30,7 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="mt-14 grid gap-6 lg:grid-cols-4">
+      <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {PLANS.map((plan) => (
           <Card
             key={plan.id}
@@ -63,6 +68,68 @@ export default function PricingPage() {
           </Card>
         ))}
       </div>
+
+      <section id="library-premium" className="mt-16 scroll-mt-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-primary/25 bg-primary/10">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Library Premium</h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Add-on for the book library and PDF reader—separate from Audiopost.{" "}
+            <strong className="font-medium text-foreground">Free:</strong> unlimited listening with your browser voice.{" "}
+            <strong className="font-medium text-foreground">Paid:</strong> Fish S2 Pro with a monthly narration allowance.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {LIBRARY_PLANS.map((plan) => (
+            <Card
+              key={plan.id}
+              className={
+                plan.highlighted
+                  ? "border-primary/60 bg-gradient-to-b from-primary/10 via-card to-card shadow-lg shadow-primary/15"
+                  : "border-border/80 bg-card/60"
+              }
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  {plan.badge ? (
+                    <Badge variant="popular" className="text-[10px] uppercase tracking-wide">
+                      {plan.badge}
+                    </Badge>
+                  ) : null}
+                </div>
+                <CardDescription>{plan.description}</CardDescription>
+                <p className="pt-4 text-3xl font-semibold tracking-tight">{libraryPlanPriceLabel(plan)}</p>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <PricingSignInCta
+                  label={plan.cta}
+                  highlighted={plan.highlighted}
+                  signInCallbackUrl={libraryPlanBillingCallbackUrl(plan.id)}
+                />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+
+        <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-muted-foreground">
+          Listening times are estimates. Allowance resets each billing month and does not roll over. Use all hours before
+          renewal? Upgrade to a higher Library tier in billing settings.
+        </p>
+      </section>
 
       <section id="ai-plan" className="mt-16 scroll-mt-8">
         <div className="flex flex-col gap-6 rounded-2xl border border-violet-500/25 bg-gradient-to-r from-violet-500/8 via-card/60 to-cyan-500/8 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">

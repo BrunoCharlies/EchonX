@@ -29,7 +29,7 @@ export default async function ExplorePage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(profiles ?? []).map((profile) => (
           <Card key={profile.id} className="border-border/80 bg-card/70">
             <CardHeader className="flex flex-row items-start gap-3 space-y-0">

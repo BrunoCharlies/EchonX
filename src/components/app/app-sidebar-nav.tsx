@@ -9,6 +9,7 @@ import {
   Headphones,
   PanelLeftClose,
   Settings,
+  Shield,
   User,
 } from "lucide-react";
 import { EchonXLogo } from "@/components/brand/echonx-logo";
@@ -33,6 +34,7 @@ type Props = {
   collapsed: boolean;
   planLabel: string;
   publicProfileHref: string;
+  isAdmin?: boolean;
   showCollapseControl?: boolean;
   onToggleCollapse?: () => void;
   onNavigate?: () => void;
@@ -42,12 +44,14 @@ export function AppSidebarNav({
   collapsed,
   planLabel,
   publicProfileHref,
+  isAdmin = false,
   showCollapseControl = false,
   onToggleCollapse,
   onNavigate,
 }: Props) {
   const pathname = usePathname();
   const { dictionary: t } = useI18n();
+  const adminHref = "/admin";
 
   const links = [
     { key: "audiopost" as const, href: "/app", label: t.nav.audiopost, exact: true },
@@ -108,6 +112,24 @@ export function AppSidebarNav({
             </Link>
           );
         })}
+
+        {isAdmin ? (
+          <Link
+            href={adminHref}
+            onClick={onNavigate}
+            className={cn(
+              "relative flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-normal tracking-wide transition-colors",
+              pathname === adminHref || pathname.startsWith(`${adminHref}/`)
+                ? "bg-primary/10 text-primary/95"
+                : "text-muted-foreground/90 hover:bg-white/[0.04] hover:text-foreground/90",
+              collapsed && "justify-center px-2",
+            )}
+            title={collapsed ? t.nav.admin : undefined}
+          >
+            <Shield className="h-4 w-4 shrink-0 opacity-70" />
+            {!collapsed ? <span>{t.nav.admin}</span> : null}
+          </Link>
+        ) : null}
 
         {!collapsed ? <div id="sidebar-credits-slot" className="mt-auto min-h-[4.5rem] px-3" /> : null}
       </nav>

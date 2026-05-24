@@ -15,6 +15,7 @@ export function AppShell({
   displayName,
   planBadge,
   avatarUrl,
+  isAdmin = false,
   /** Audiopost keeps premium dark UI even when global theme is Lumos. */
   audiopostDark = false,
 }: {
@@ -23,6 +24,7 @@ export function AppShell({
   displayName: string;
   planBadge: string;
   avatarUrl?: string | null;
+  isAdmin?: boolean;
   audiopostDark?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -47,6 +49,7 @@ export function AppShell({
         onClose={() => setMobileNavOpen(false)}
         planLabel={planBadge}
         publicProfileHref={publicProfileHref}
+        isAdmin={isAdmin}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopBar

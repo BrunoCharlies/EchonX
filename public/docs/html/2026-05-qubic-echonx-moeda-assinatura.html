@@ -2838,7 +2838,7 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
         <tbody>
           <tr><td>0</td><td>Breakpoints + hook</td><td>✅</td></tr>
           <tr><td>1</td><td>App shell — sidebar <code>lg:flex</code>, menu ☰, drawer</td><td>✅</td></tr>
-          <tr><td>2</td><td>Marketing + auth + <code>/profile</code></td><td>Pendente</td></tr>
+          <tr><td>2</td><td>Marketing + auth + <code>/profile</code></td><td>✅</td></tr>
           <tr><td>3</td><td><code>/app/explore</code></td><td>Pendente</td></tr>
           <tr><td>4</td><td><code>/u/[username]</code></td><td>Pendente</td></tr>
           <tr><td>5</td><td>Audiopost stack simples (&lt; lg)</td><td>✅ v2 (correções scroll/duplicação)</td></tr>
@@ -2873,6 +2873,46 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
         <code>app-mobile-nav-drawer.tsx</code>,
         <code>app-sidebar-nav.tsx</code>.
       </p>
+
+      <h3 id="layout-responsivo-fase-2-maio-2026">44.7 Fase 2 — Marketing, auth e <code>/profile</code> (Maio 2026)</h3>
+      <p>
+        Âncora: <code>#layout-responsivo-fase-2-maio-2026</code>. Desktop (≥ 1024 px) inalterado; melhorias só com
+        <code>max-lg:</code> / <code>lg:hidden</code> / <code>lg:flex</code>.
+      </p>
+      <table>
+        <thead><tr><th>Área</th><th>Alteração</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Marketing</strong> (<code>SiteHeader</code>)</td>
+            <td>Menu hamburger e drawer passam de <code>md:</code> (768 px) para <code>lg:</code> (1024 px), alinhado ao §44</td>
+          </tr>
+          <tr>
+            <td>Homepage <code>/</code></td>
+            <td>Hero mais baixo no telemóvel (<code>max-lg:min-h-[min(520px,88dvh)]</code>); título <code>text-4xl</code> → <code>lg:text-7xl</code></td>
+          </tr>
+          <tr>
+            <td><code>/pricing</code></td>
+            <td>Grelha <code>md:grid-cols-2 lg:grid-cols-4</code> (tablet 2 colunas)</td>
+          </tr>
+          <tr>
+            <td>Marketing <code>/explore</code></td>
+            <td>Perfis <code>sm:grid-cols-2 lg:grid-cols-3</code></td>
+          </tr>
+          <tr>
+            <td><strong>Auth</strong></td>
+            <td>Card com <code>safe-area</code>, padding compacto, logo <code>compact</code></td>
+          </tr>
+          <tr>
+            <td><strong>App shell header</strong></td>
+            <td><code>AppShellHeaderClient</code>: barra mobile (☰ + logo mini + pesquisa + idioma); drawer autenticado (<code>AppMobileNavDrawer</code> + Sign out) ou convidado (<code>AppShellHeaderGuestDrawer</code>); desktop mantém grelha 3 colunas com <code>AppNav</code></td>
+          </tr>
+          <tr>
+            <td><code>/profile</code> + onboarding</td>
+            <td>Título e botões com alvos ≥ 44 px; formulário <code>max-sm:p-4</code>; layouts com menos padding vertical em <code>max-lg</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Ficheiros novos:</strong> <code>app-shell-header-client.tsx</code>, <code>app-shell-header-guest-drawer.tsx</code>.</p>
 
       <h3 id="audiopost-mobile-correcoes-maio-2026">44.6 Audiopost mobile — correções (Maio 2026)</h3>
       <p>
@@ -2961,8 +3001,44 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
       </ul>
     </section>
 
+    <section id="backup-v1-14">
+      <h2>48. Backupv1.14 — ponto de restauração (atual)</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.14</code> · 2026-05-24 · Fase 2 responsiva + Library Premium em <code>/pricing</code> · âmbito <a href="#backup-v1-13">Backupv1.13</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (570 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.14\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.14\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.14.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.14</code></pre>
+      <p>Âncora: <code>#backup-v1-14</code> · Responsivo: <code>#layout-responsivo-fase-2-maio-2026</code> · Pricing Library: <code>/pricing#library-premium</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-13">Backupv1.13</a>.</p>
+    </section>
+
+    <section id="backup-v1-13">
+      <h2>47. Backupv1.13 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.13</code> · 2026-05-24 · Layout responsivo + Audiopost mobile · âmbito <a href="#backup-v1-12">Backupv1.12</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (567 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.13\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.13\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.13.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.13</code></pre>
+      <p>Âncora: <code>#backup-v1-13</code> · Layout: <code>#layout-responsivo-breakpoints-maio-2026</code> · Correções: <code>#audiopost-mobile-correcoes-maio-2026</code> · Commit: <code>8d59131</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-12">Backupv1.12</a>.</p>
+    </section>
+
     <section id="backup-v1-12">
-      <h2>46. Backupv1.12 — ponto de restauração (atual)</h2>
+      <h2>46. Backupv1.12 — ponto anterior</h2>
       <div class="callout ok">
         <strong>ID do backup:</strong> <code>Backupv1.12</code> · 2026-05-24 · Perfil + favicon + Desktop + fix Vercel · âmbito <a href="#backup-v1-11">Backupv1.11</a>.
       </div>

@@ -43,7 +43,7 @@ export function SiteHeader() {
         </Link>
 
         {!isProfilePage ? (
-          <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+          <nav className="hidden items-center gap-8 text-sm text-muted-foreground lg:flex">
             {links.map((link) => (
               <Link
                 key={link.href}
@@ -61,7 +61,7 @@ export function SiteHeader() {
           </nav>
         ) : null}
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {!isProfilePage ? <LanguageSelector compact /> : null}
           {isProfilePage ? (
             <>
@@ -120,7 +120,7 @@ export function SiteHeader() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-border/60 bg-background/95 md:hidden"
+            className="border-t border-border/60 bg-background/95 lg:hidden"
           >
             <div className="flex flex-col gap-3 px-4 py-4 text-sm">
               {isProfilePage ? (

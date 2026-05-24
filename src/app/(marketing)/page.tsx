@@ -54,7 +54,7 @@ export default function HomePage() {
 
       <section className="relative mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-3xl border border-border/70 bg-background/70 shadow-2xl shadow-primary/10 backdrop-blur">
-          <div className="relative grid min-h-[620px] gap-10 px-6 py-10 sm:px-10 lg:grid-cols-[0.92fr_1.08fr] lg:px-14 lg:py-14">
+          <div className="relative grid min-h-0 gap-8 px-5 py-8 max-lg:min-h-[min(520px,88dvh)] sm:gap-10 sm:px-10 sm:py-10 lg:min-h-[620px] lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:px-14 lg:py-14">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
             <motion.div initial="hidden" animate="show" transition={{ staggerChildren: 0.08 }} className="relative z-10 flex flex-col justify-center">
               <motion.div variants={fadeUp}>
@@ -63,7 +63,7 @@ export default function HomePage() {
                   {t.marketing.badge}
                 </Badge>
               </motion.div>
-              <motion.h1 variants={fadeUp} className="max-w-xl text-balance text-5xl font-semibold tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+              <motion.h1 variants={fadeUp} className="max-w-xl text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-5xl lg:text-7xl">
                 {t.marketing.headlineA}{" "}
                 <span className="text-primary drop-shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
                   {t.marketing.headlineB}

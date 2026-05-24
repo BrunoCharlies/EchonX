@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { AppSidebarNav } from "@/components/app/app-sidebar-nav";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -11,9 +14,21 @@ type Props = {
   onClose: () => void;
   planLabel: string;
   publicProfileHref: string;
+  isAdmin?: boolean;
 };
 
-export function AppMobileNavDrawer({ open, onClose, planLabel, publicProfileHref }: Props) {
+export function AppMobileNavDrawer({ open, onClose, planLabel, publicProfileHref, isAdmin = false }: Props) {
+  const router = useRouter();
+  const { dictionary: t } = useI18n();
+
+  async function onSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    onClose();
+    router.push("/");
+    router.refresh();
+  }
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -50,12 +65,20 @@ export function AppMobileNavDrawer({ open, onClose, planLabel, publicProfileHref
             <span className="sr-only">Close menu</span>
           </Button>
         </div>
-        <AppSidebarNav
-          collapsed={false}
-          planLabel={planLabel}
-          publicProfileHref={publicProfileHref}
-          onNavigate={onClose}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <AppSidebarNav
+            collapsed={false}
+            planLabel={planLabel}
+            publicProfileHref={publicProfileHref}
+            isAdmin={isAdmin}
+            onNavigate={onClose}
+          />
+        </div>
+        <div className="shrink-0 border-t border-border/60 p-3">
+          <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => void onSignOut()}>
+            {t.common.signOut}
+          </Button>
+        </div>
       </aside>
     </div>
   );

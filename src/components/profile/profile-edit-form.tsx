@@ -120,7 +120,7 @@ export function ProfileEditForm({
 
   return (
     <form
-      className="space-y-6 rounded-xl border border-border/80 bg-card/60 p-6 shadow-sm"
+      className="space-y-6 rounded-xl border border-border/80 bg-card/60 p-4 shadow-sm max-sm:p-4 sm:p-6"
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
@@ -191,7 +191,7 @@ export function ProfileEditForm({
       ) : null}
       <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <ThemeModeToggle />
-        <Button type="submit" className="w-full sm:w-auto sm:min-w-[160px]" disabled={pending}>
+        <Button type="submit" className="min-h-11 w-full sm:w-auto sm:min-w-[160px]" disabled={pending}>
           {pending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

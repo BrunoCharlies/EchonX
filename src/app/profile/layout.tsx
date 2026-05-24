@@ -4,7 +4,7 @@ export default async function ProfileShellLayout({ children }: { children: React
   return (
     <div className="min-h-dvh bg-background">
       <AppShellHeader />
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">{children}</div>
+      <div className="mx-auto max-w-6xl px-4 py-6 max-lg:py-5 sm:px-6 lg:px-8 lg:py-8">{children}</div>
     </div>
   );
 }

@@ -21,15 +21,15 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
+    <div className="mx-auto max-w-2xl space-y-6 py-4 max-lg:py-2 sm:space-y-8 sm:py-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Photo, bio, and @username are public. Images are reviewed automatically before they are saved.
           </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" asChild>
           <Link href={`/u/${profile.username}`}>View public page</Link>
         </Button>
       </div>

@@ -1,43 +1,4 @@
-EchonX — backup ativo (cópia de segurança)
-
-ID:       Backupv1.11
-Data:     2026-05-24
-Versão:   0.1.0
-Ficheiros: 498 (ZIP)
-
-Local:
-  C:\Users\55479\Desktop\EchonX-backups\Backupv1.11\EchonX-full-source.zip
-
-Espelho:
-  C:\Users\55479\Desktop\EchonX-backups\Backupv1.11\EchonX-mirror\
-
-Documentação:
-  docs/BACKUP-Backupv1.11.md
-  docs/html/2026-05-qubic-echonx-moeda-assinatura.html#backup-v1-11
-  docs/html/2026-05-qubic-echonx-moeda-assinatura.html#native-profile-intelligence-maio-2026
-
-Recriar:
-  .\scripts\create-phase-backup.ps1 -PhaseId Backupv1.11
-
-Restaurar:
-  Extrair ZIP ou copiar de EchonX-mirror sobre o projeto (excluir node_modules/.next depois npm install)
-
-Escopo principal:
-  - Perfil nativo Intelligence UI (/u/[username], kind=native)
-  - Lumos no perfil (native-profile-lumos.css)
-  - Reparação kind native vs external_x
-  - Cognitive tags legíveis em Lumos
-  - Heranço Backupv1.10 (AI Context, Stripe, Explore, etc.)
-
-Backups anteriores:
-  Backupv1.10 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.10\
-  Backupv1.9 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.9\
-  Backupv1.8 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.8\
-  Backupv1.7 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.7\
-  Backupv1.6 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.6\
-  Backupv1.5 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.5\
-  Backupv1.4 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.4\
-  Backupv1.3 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.3\
-  Backupv1.2 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.2\
-  Backupv1.1 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.1\
-  Backupv1.0 — C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\
+Backup atual: Backupv1.14 (2026-05-24)
+ZIP: C:\Users\55479\Desktop\EchonX-backups\Backupv1.14\EchonX-full-source.zip
+Doc: docs/BACKUP-Backupv1.14.md
+HTML: docs/html/2026-05-qubic-echonx-moeda-assinatura.html#backup-v1-14

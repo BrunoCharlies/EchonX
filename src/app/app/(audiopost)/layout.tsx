@@ -22,6 +22,7 @@ export default async function AudiopostLayout({ children }: { children: React.Re
   return (
     <AppShell
       audiopostDark
+      isAdmin={session?.user.role === "admin"}
       publicProfileHref={publicProfileHref}
       displayName={displayName}
       planBadge={planBadge}
