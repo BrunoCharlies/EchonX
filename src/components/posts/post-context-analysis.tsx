@@ -80,6 +80,13 @@ export function PostContextAnalysis({
 
       if (!res.ok) {
         setExpanded(false);
+        if (data.code === "openai_unconfigured") {
+          setError(
+            data.error ??
+              "AI Context is not available: OPENAI_API_KEY is missing on the server. Ask an admin to add it in Vercel (or .env.local locally) and redeploy.",
+          );
+          return;
+        }
         setError(data.error ?? "Could not analyze context for this post.");
         return;
       }

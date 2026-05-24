@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Pencil,
   RefreshCw,
+  Sparkles,
   Upload,
   Users,
   Wifi,
@@ -47,10 +48,12 @@ export function AdminDashboard({
   initialRecommendation,
   initialOfficialChannel,
   initialQubicChannel,
+  openAiConfigured,
 }: {
   initialRecommendation: RecommendedReadingItem | null;
   initialOfficialChannel: OfficialChannelState;
   initialQubicChannel: QubicChannelState;
+  openAiConfigured: boolean;
 }) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +150,17 @@ export function AdminDashboard({
           Operações, canais oficiais, biblioteca fixa e sync X. Métricas ao vivo a cada 3 s.
         </p>
       </header>
+
+      <AdminSection
+        variant={openAiConfigured ? "default" : "alert"}
+        title="AI Context (OpenAI)"
+        description={
+          openAiConfigured
+            ? "OPENAI_API_KEY is set on this server. The AI Context button on posts can call OpenAI."
+            : "OPENAI_API_KEY is missing. Add it in Vercel → Settings → Environment Variables (Production), then redeploy. Locally: .env.local."
+        }
+        icon={<Sparkles className={cn("h-4 w-4", openAiConfigured ? "text-primary" : "text-amber-400")} />}
+      />
 
       <AdminSection
         variant="stats"

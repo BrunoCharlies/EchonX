@@ -14,7 +14,11 @@ export async function POST(request: Request) {
 
   if (!isOpenAiConfigured()) {
     return NextResponse.json(
-      { error: "AI context analysis is not configured.", code: "openai_unconfigured" },
+      {
+        error:
+          "AI context analysis is not configured on this server. Add OPENAI_API_KEY to environment variables (e.g. Vercel → Settings → Environment Variables) and redeploy.",
+        code: "openai_unconfigured",
+      },
       { status: 503 },
     );
   }
