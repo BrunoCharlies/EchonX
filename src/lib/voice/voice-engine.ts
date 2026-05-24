@@ -1,5 +1,5 @@
 import { prepareLibrarySegmentForSpeech, prepareMirroredPostForSpeech } from "@/lib/voice/speech-text";
-import { isAppleMobileBrowser, primeWebSpeechForUserGesture } from "@/lib/voice/ios-speech-unlock";
+import { isAppleMobileBrowser } from "@/lib/voice/ios-speech-unlock";
 import {
   isCompatibleSpeechVoiceLang,
   isEuropeanPortugueseVoice,
@@ -178,9 +178,6 @@ export async function createVoiceEngine(): Promise<VoiceEngine> {
       finishCurrentSpeech();
       cancelSpeechSynthesis();
       window.speechSynthesis.resume();
-      if (isAppleMobileBrowser()) {
-        primeWebSpeechForUserGesture();
-      }
       const lang = normalizeSpeechLocale(options?.lang ?? "en-US");
       const voices = await loadVoices();
       const selectedVoice = pickVoice(voices, lang, options?.voiceURI);

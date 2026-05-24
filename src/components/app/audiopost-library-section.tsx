@@ -264,7 +264,7 @@ export function AudiopostLibrarySection({
         ))}
       </div>
 
-      <div className="mt-2 min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1 pt-0.5">
+      <div className="mt-2 min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-1 pt-0.5 max-lg:touch-pan-x max-lg:overscroll-x-contain">
         {showCatalog ? (
           <div className="flex items-start gap-4">
             {catalogBooks.map((book) => {

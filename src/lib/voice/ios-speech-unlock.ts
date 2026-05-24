@@ -17,9 +17,15 @@ export function primeWebSpeechForUserGesture() {
 
   const utterance = new SpeechSynthesisUtterance(" ");
   utterance.volume = 0.01;
-  utterance.rate = 1.2;
+  utterance.rate = 1;
   utterance.lang = "en-US";
   synth.speak(utterance);
+  window.setTimeout(() => {
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+    }
+    synth.resume();
+  }, 32);
 }
 
 /** Unlocks HTMLAudioElement.play() on iOS when used after Fish TTS fetch. */

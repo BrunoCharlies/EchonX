@@ -29,8 +29,30 @@ const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024;
 /** Served from /public (see scripts/copy-pdf-worker.js) — do not use import.meta.url with Next/Webpack. */
 function ensurePdfWorkerConfigured(pdfjs: typeof import("pdfjs-dist")) {
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    pdfjs.GlobalWorkerOptions.workerSrc = isMobileAppleDevice()
+      ? "/pdf.worker.legacy.min.mjs"
+      : "/pdf.worker.min.mjs";
   }
+}
+
+function hasSpeakableText(text: string) {
+  return /[\p{L}\p{N}]{2,}/u.test(text.trim());
+}
+
+function findFirstReadableIndex(segments: PdfSegment[], from = 0) {
+  for (let index = from; index < segments.length; index++) {
+    if (hasSpeakableText(segments[index]?.text ?? "")) return index;
+  }
+  return -1;
+}
+
+/** PDF pages can be huge; sentence chunks match Gutenberg and work better on iOS TTS. */
+function normalizePdfSegmentsForReading(pageSegments: PdfSegment[]) {
+  const body = pageSegments
+    .map((segment) => segment.text)
+    .filter(Boolean)
+    .join("\n\n");
+  return textToSegments(body);
 }
 
 type PdfSegment = {
@@ -166,7 +188,8 @@ async function loadReadingSource(source: PdfReadingSource, signal?: AbortSignal)
     if (!buffer.byteLength) {
       throw new Error("The PDF file is empty.");
     }
-    const segments = await extractPdfSegmentsFromBuffer(buffer);
+    const pageSegments = await extractPdfSegmentsFromBuffer(buffer);
+    const segments = normalizePdfSegmentsForReading(pageSegments);
     if (!segments.length) {
       throw new Error(
         "No readable text in this PDF. If this is a scan, try another title or open on desktop.",
@@ -270,13 +293,25 @@ export const PdfReadingPlayer = forwardRef<
 
   async function startReading(index = currentIndex) {
     const sourceId = activeSourceIdRef.current;
-    const segment = segmentsRef.current[index];
-    if (!segment?.text?.trim() || !sourceId) {
+    if (!sourceId) return;
+
+    const readableIndex = findFirstReadableIndex(segmentsRef.current, index);
+    if (readableIndex < 0) {
       setError("Nothing to read in this section. Try another book or skip forward.");
       setReaderState("ready");
       onPlaybackUpdateRef.current?.({ error: "Nothing to read in this section.", readerState: "ready" });
       return;
     }
+
+    const segment = segmentsRef.current[readableIndex];
+    if (!segment?.text?.trim()) {
+      setError("Nothing to read in this section. Try another book or skip forward.");
+      setReaderState("ready");
+      onPlaybackUpdateRef.current?.({ error: "Nothing to read in this section.", readerState: "ready" });
+      return;
+    }
+
+    index = readableIndex;
 
     await claimVoicePlayback("pdf-reader");
     const runId = runIdRef.current + 1;
@@ -359,7 +394,7 @@ export const PdfReadingPlayer = forwardRef<
     }
 
     try {
-      const extractedSegments = await extractPdfSegments(file);
+      const extractedSegments = normalizePdfSegmentsForReading(await extractPdfSegments(file));
       if (!extractedSegments.length) {
         setReaderState("empty");
         setError("No readable text was found. Scanned/image PDFs will need OCR in a future version.");
