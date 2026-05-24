@@ -184,17 +184,6 @@ async function extractPdfSegments(file: File): Promise<PdfSegment[]> {
   return extractPdfSegmentsFromBuffer(await file.arrayBuffer());
 }
 
-const LIBRARY_LOAD_TIMEOUT_MS = 90_000;
-
-function mergeAbortSignals(primary?: AbortSignal, timeoutMs = LIBRARY_LOAD_TIMEOUT_MS) {
-  if (typeof AbortSignal.timeout === "function") {
-    const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    if (!primary) return timeoutSignal;
-    return AbortSignal.any([primary, timeoutSignal]);
-  }
-  return primary;
-}
-
 /** Qubic / recommended PDFs: server extracts text (iOS Safari cannot rely on client pdf.js). */
 async function loadProxiedPdfAsTextSegments(sourceUrl: string, signal?: AbortSignal) {
   const separator = sourceUrl.includes("?") ? "&" : "?";
@@ -221,13 +210,11 @@ async function loadProxiedPdfAsTextSegments(sourceUrl: string, signal?: AbortSig
 }
 
 async function loadReadingSource(source: PdfReadingSource, signal?: AbortSignal) {
-  const loadSignal = mergeAbortSignals(signal);
-
   if (source.sourceType === "pdf" && isLibraryDocumentProxyUrl(source.sourceUrl)) {
-    return loadProxiedPdfAsTextSegments(source.sourceUrl, loadSignal);
+    return loadProxiedPdfAsTextSegments(source.sourceUrl, signal);
   }
 
-  const response = await fetch(source.sourceUrl, { cache: "no-store", signal: loadSignal });
+  const response = await fetch(source.sourceUrl, { cache: "no-store", signal });
   if (!response.ok) {
     throw new Error("Unable to load the selected reading.");
   }
