@@ -1,0 +1,10 @@
+Reverter Lumos no perfil nativo (voltar só ao visual escuro fixo):
+
+1. Apagar: src/styles/native-profile-lumos.css
+2. Apagar: este ficheiro (opcional)
+3. Em src/app/globals.css — remover as 2 linhas:
+   /* Lumos overrides for native profile ... */
+   @import "../styles/native-profile-lumos.css";
+4. (Opcional) Em native-profile-experience.tsx — remover classes np-hero-fallback, np-hero-overlay, np-hero-glow, np-timeline-section
+
+O perfil continua a funcionar; só deixa de mudar com o toggle Lumos/Dark em /profile.

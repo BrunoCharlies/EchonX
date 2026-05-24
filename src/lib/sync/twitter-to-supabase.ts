@@ -1,6 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/service";
 
-function normalizeHandle(raw?: string) {
+export function normalizeHandle(raw?: string) {
   const base = (raw ?? "")
     .trim()
     .replace(/^@/, "")
@@ -10,7 +10,7 @@ function normalizeHandle(raw?: string) {
   return `user_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function pickUniqueUsername(supabase: ReturnType<typeof createServiceRoleClient>, desired: string) {
+export async function pickUniqueUsername(supabase: ReturnType<typeof createServiceRoleClient>, desired: string) {
   let candidate = desired.slice(0, 24);
   for (let i = 0; i < 5; i++) {
     const { data, error } = await supabase.from("profiles").select("id").eq("username", candidate).maybeSingle();
@@ -28,6 +28,16 @@ function resolveAppRole(twitterUserId: string): "user" | "admin" {
       .map((s) => s.trim())
       .filter(Boolean) ?? [];
   return admins.includes(twitterUserId) ? "admin" : "user";
+}
+
+/** Admin allowlist for email/password accounts (comma-separated, case-insensitive). */
+export function resolveEmailAppRole(email: string): "user" | "admin" {
+  const normalized = email.trim().toLowerCase();
+  const admins =
+    process.env.ECHONX_ADMIN_EMAILS?.split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean) ?? [];
+  return admins.includes(normalized) ? "admin" : "user";
 }
 
 /**
@@ -58,13 +68,16 @@ export async function syncTwitterUserToSupabase(input: {
       .update({
         display_name: input.displayName ?? null,
         role,
+        kind: "native",
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id);
     if (error) throw error;
   } else {
     const username = await pickUniqueUsername(supabase, desired);
+    const profileId = crypto.randomUUID();
     const { error } = await supabase.from("profiles").insert({
+      id: profileId,
       owner_x_user_id: input.twitterUserId,
       username,
       display_name: input.displayName ?? null,

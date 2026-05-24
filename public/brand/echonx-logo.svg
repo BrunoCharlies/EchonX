@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 48" role="img" aria-label="EchonX">
+  <defs>
+    <linearGradient id="echonx-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="4" width="40" height="40" rx="10" fill="url(#echonx-g)"/>
+  <text x="20" y="31" text-anchor="middle" fill="#fff" font-family="ui-sans-serif,system-ui,sans-serif" font-size="20" font-weight="700">E</text>
+  <text x="52" y="32" fill="#f4f4f5" font-family="ui-sans-serif,system-ui,sans-serif" font-size="22" font-weight="700" letter-spacing="-0.02em">EchonX</text>
+</svg>

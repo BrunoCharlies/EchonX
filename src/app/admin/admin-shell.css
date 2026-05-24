@@ -1,0 +1,210 @@
+/**
+ * Scoped to /admin layout only — does not affect /app or marketing pages.
+ */
+.admin-shell {
+  --admin-bg: #030508;
+  --admin-panel: #0b1018;
+  --admin-border: rgba(255, 255, 255, 0.1);
+  --admin-muted: rgba(232, 237, 244, 0.58);
+  min-height: 100dvh;
+  background-color: var(--admin-bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 50% -10%, rgba(0, 200, 255, 0.07), transparent 55%),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: auto, 24px 24px, 24px 24px;
+  color: #eef3f9;
+}
+
+.admin-shell__header {
+  border-bottom: 1px solid var(--admin-border);
+  background: rgba(3, 5, 8, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+.admin-shell__header-inner {
+  margin-inline: auto;
+  display: flex;
+  max-width: 42rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+}
+
+.admin-shell__badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0, 200, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(0, 200, 255, 0.1);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7ee8ff;
+}
+
+.admin-shell__main {
+  margin-inline: auto;
+  max-width: 42rem;
+  padding: 1.25rem 1.25rem 2.5rem;
+}
+
+.admin-dashboard-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Channel cards (News / Qubic) — visual only; layout is in the component */
+.admin-channel-card {
+  border-color: var(--admin-border) !important;
+  border-radius: 0.5rem !important;
+  background: var(--admin-panel) !important;
+  box-shadow: none !important;
+}
+
+.admin-channel-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-dashboard-stack .text-muted-foreground {
+  color: var(--admin-muted) !important;
+}
+
+.admin-dashboard-stack input,
+.admin-dashboard-stack textarea,
+.admin-dashboard-stack select {
+  border-color: var(--admin-border) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+.admin-panel {
+  border: 1px solid var(--admin-border);
+  border-radius: 0.5rem;
+  background: var(--admin-panel);
+  padding: 0.875rem 1rem;
+}
+
+.admin-panel--alert {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), rgba(11, 16, 24, 0.95));
+}
+
+.admin-panel--stats {
+  border-color: rgba(0, 200, 255, 0.22);
+  background: linear-gradient(180deg, rgba(0, 200, 255, 0.06), var(--admin-panel));
+}
+
+.admin-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.625rem 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-panel__head--compact {
+  margin-bottom: 0.5rem;
+}
+
+.admin-panel__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f4f7fb;
+}
+
+.admin-panel__desc {
+  margin-top: 0.3rem;
+  max-width: 100%;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--admin-muted);
+}
+
+.admin-panel__body {
+  font-size: 0.8125rem;
+}
+
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 520px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.admin-stat {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.375rem;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.625rem 0.75rem;
+}
+
+.admin-stat__label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--admin-muted);
+}
+
+.admin-stat__value {
+  margin-top: 0.2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.admin-stat__hint {
+  margin-top: 0.25rem;
+  font-size: 0.5625rem;
+  color: rgba(232, 237, 244, 0.38);
+}
+
+.admin-page-hero {
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #fff;
+}
+
+.admin-page-lead {
+  margin-top: 0.35rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--admin-muted);
+}
+
+.admin-footer-meta {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--admin-border);
+  font-size: 0.625rem;
+  color: rgba(232, 237, 244, 0.4);
+  text-align: center;
+}
+
+.admin-shell a[class*="hover"] {
+  color: var(--admin-muted);
+}

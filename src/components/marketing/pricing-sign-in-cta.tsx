@@ -1,17 +1,17 @@
 "use client";
 
-import { SignInWithTwitterButton } from "@/components/auth/sign-in-with-twitter-button";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   label: string;
   highlighted?: boolean;
 };
 
-/** Pricing cards stay server-rendered; this small client island triggers OAuth correctly. */
 export function PricingSignInCta({ label, highlighted }: Props) {
   return (
-    <SignInWithTwitterButton className="w-full" variant={highlighted ? "default" : "outline"} callbackUrl="/pricing">
-      {label}
-    </SignInWithTwitterButton>
+    <Button className="w-full" variant={highlighted ? "default" : "outline"} asChild>
+      <Link href="/login?callbackUrl=%2Fpricing">{label}</Link>
+    </Button>
   );
 }

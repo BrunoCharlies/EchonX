@@ -6,20 +6,28 @@ export const runtime = "nodejs";
 
 /** Updates `profiles.last_seen_at` for lightweight online/offline heuristics in the admin dashboard. */
 export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ ok: false, skipped: "unauthorized" });
+    }
+
+    const supabase = createServiceRoleClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", session.user.id);
+
+    if (error) {
+      if (error.code !== "PGRST204") {
+        console.error("[presence/heartbeat] update failed", error);
+      }
+      return NextResponse.json({ ok: false, skipped: "update_failed" });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[presence/heartbeat] unexpected failure", error);
+    return NextResponse.json({ ok: false, skipped: "unexpected_failure" });
   }
-
-  const supabase = createServiceRoleClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ last_seen_at: new Date().toISOString() })
-    .eq("owner_x_user_id", session.user.id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true });
 }

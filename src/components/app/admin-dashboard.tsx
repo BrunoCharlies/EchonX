@@ -1,10 +1,37 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { Activity, BookOpen, FileText, Users, Wifi, WifiOff } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import type { FormEvent, ReactNode } from "react";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import {
+  Activity,
+  BookOpen,
+  ExternalLink,
+  FileText,
+  FlaskConical,
+  Pencil,
+  RefreshCw,
+  Upload,
+  Users,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { ADMIN_DOC_LINKS } from "@/lib/docs/explainer-pages";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  saveEchonXReadingRecommendation,
+  type RecommendedReadingItem,
+} from "@/server/actions/recommended-reading";
+import type { OfficialChannelState } from "@/lib/curator/ingest";
+import { OfficialChannelAdmin } from "@/components/app/official-channel-admin";
+import { QubicChannelAdmin } from "@/components/app/qubic-channel-admin";
+import type { QubicChannelState } from "@/lib/curator/qubic-ingest";
+
+const X_SYNC_MANUAL_RESET_STORAGE_KEY = "echonx:x-sync-manual-reset-at";
 
 type Metrics = {
   generatedAt: string;
@@ -16,9 +43,25 @@ type Metrics = {
   textsReadToday: number;
 };
 
-export function AdminDashboard() {
+export function AdminDashboard({
+  initialRecommendation,
+  initialOfficialChannel,
+  initialQubicChannel,
+}: {
+  initialRecommendation: RecommendedReadingItem | null;
+  initialOfficialChannel: OfficialChannelState;
+  initialQubicChannel: QubicChannelState;
+}) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncPending, setSyncPending] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState(initialRecommendation);
+  const [recommendationPending, startRecommendationTransition] = useTransition();
+  const [recommendationMessage, setRecommendationMessage] = useState<string | null>(null);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [recommendationEditing, setRecommendationEditing] = useState(!initialRecommendation);
 
   useEffect(() => {
     let alive = true;
@@ -47,70 +90,339 @@ export function AdminDashboard() {
     };
   }, []);
 
+  async function runUniversalXSync() {
+    setSyncPending(true);
+    setSyncMessage(null);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/admin/x-sync", { method: "POST" });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; message?: string; error?: string } | null;
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error ?? "Unable to run universal X sync.");
+      }
+
+      const now = Date.now();
+      window.localStorage.setItem(X_SYNC_MANUAL_RESET_STORAGE_KEY, String(now));
+      window.dispatchEvent(new Event("echonx:x-sync-manual-reset"));
+      window.dispatchEvent(new Event("echonx:listening-queue-refresh"));
+      setSyncMessage(json.message ?? "Universal X sync completed.");
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Unable to run universal X sync.");
+    } finally {
+      setSyncPending(false);
+    }
+  }
+
+  function onRecommendationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const title = String(formData.get("title") ?? "").trim();
+    const author = String(formData.get("author") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    setRecommendationMessage(null);
+    setRecommendationError(null);
+    startRecommendationTransition(async () => {
+      const result = await saveEchonXReadingRecommendation(formData);
+      if (!result.ok) {
+        setRecommendationError(result.error ?? "Unable to save the recommendation.");
+        return;
+      }
+
+      setRecommendationMessage(result.message ?? "Recommendation saved.");
+      setRecommendation((current) =>
+        current
+          ? { ...current, title, author: author || null, description: description || null, updatedAt: new Date().toISOString() }
+          : null,
+      );
+      setRecommendationEditing(false);
+    });
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Admin dashboard</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Indicadores ao vivo a partir do Supabase (atualização a cada 3 segundos). Acesso restrito a contas com{" "}
-          <span className="font-mono text-[11px]">role = admin</span> na tabela <span className="font-mono text-[11px]">profiles</span>.
+    <div className="admin-dashboard-stack">
+      <header className="admin-page-hero">
+        <h1 className="admin-page-title">Admin dashboard</h1>
+        <p className="admin-page-lead">
+          Operações, canais oficiais, biblioteca fixa e sync X. Métricas ao vivo a cada 3 s.
         </p>
-      </div>
+      </header>
 
-      {error ? (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-base text-destructive">Métricas indisponíveis</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-        </Card>
-      ) : null}
+      <AdminSection
+        variant="stats"
+        title="Estatísticas ao vivo"
+        description={error ? "Falha ao carregar métricas." : `Atualizado: ${metrics?.generatedAt ?? "…"}`}
+        headCompact
+      >
+        {error ? (
+          <p className="text-sm text-destructive">{error}</p>
+        ) : (
+          <div className="admin-stat-grid">
+            <MetricTile
+              icon={<Users className="h-3.5 w-3.5 text-primary" />}
+              label="Usuários cadastrados"
+              value={metrics?.registeredUsers}
+              hint="Total · sem filtro de data"
+            />
+            <MetricTile
+              icon={<Activity className="h-3.5 w-3.5 text-accent" />}
+              label="Ativos (7 dias)"
+              value={metrics?.activeUsers}
+              hint="last_seen_at ≥ 7 dias"
+            />
+            <MetricTile
+              icon={<Wifi className="h-3.5 w-3.5 text-emerald-400" />}
+              label="Online agora"
+              value={metrics?.onlineUsers}
+              hint="last_seen_at · últimos 2 min"
+            />
+            <MetricTile
+              icon={<WifiOff className="h-3.5 w-3.5 opacity-60" />}
+              label="Fora do online"
+              value={metrics?.offlineUsers}
+              hint="cadastrados − online (2 min)"
+            />
+            <MetricTile
+              icon={<FileText className="h-3.5 w-3.5 text-primary" />}
+              label="Posts criados"
+              value={metrics?.postsCreated}
+              hint="Total · tabela posts"
+            />
+            <MetricTile
+              icon={<BookOpen className="h-3.5 w-3.5 text-accent" />}
+              label="Textos lidos hoje"
+              value={metrics?.textsReadToday}
+              hint="UTC · text_read_events"
+            />
+          </div>
+        )}
+      </AdminSection>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <MetricTile
-          icon={<Users className="h-4 w-4 text-primary" />}
-          label="Usuários cadastrados"
-          value={metrics?.registeredUsers}
-          hint="Linhas em profiles"
-        />
-        <MetricTile
-          icon={<Activity className="h-4 w-4 text-accent" />}
-          label="Usuários ativos (7 dias)"
-          value={metrics?.activeUsers}
-          hint="last_seen_at nos últimos 7 dias"
-        />
-        <MetricTile
-          icon={<Wifi className="h-4 w-4 text-emerald-400" />}
-          label="Online agora"
-          value={metrics?.onlineUsers}
-          hint="last_seen_at nos últimos 2 minutos"
-        />
-        <MetricTile
-          icon={<WifiOff className="h-4 w-4 text-muted-foreground" />}
-          label="Offline"
-          value={metrics?.offlineUsers}
-          hint="Cadastrados menos online (2 min)"
-        />
-        <MetricTile
-          icon={<FileText className="h-4 w-4 text-primary" />}
-          label="Posts criados"
-          value={metrics?.postsCreated}
-          hint="Total na tabela posts"
-        />
-        <MetricTile
-          icon={<BookOpen className="h-4 w-4 text-accent" />}
-          label="Textos lidos hoje (UTC)"
-          value={metrics?.textsReadToday}
-          hint="Eventos em text_read_events desde meia-noite UTC"
-        />
-      </div>
+      <AdminSection
+        variant="alert"
+        title="Development Lab"
+        description="Teste voz, biblioteca e futuras features em sandbox sem alterar o Audiopost em produção."
+        icon={<FlaskConical className="h-4 w-4 text-amber-400" />}
+        actions={
+          <Button size="sm" variant="outline" className="border-amber-500/30" asChild>
+            <Link href="/admin/lab">Open feature labs</Link>
+          </Button>
+        }
+      />
 
-      <Separator />
+      <AdminSection
+        title="Documentação interna"
+        description="Produto, Stripe/Library (§30), Library bar (§29) e backup Backupv1.4 — abre em nova aba."
+        icon={<BookOpen className="h-4 w-4 text-primary" />}
+      >
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" className="gap-2">
+            <Link href={ADMIN_DOC_LINKS.mainHtml} target="_blank" rel="noopener noreferrer">
+              <FileText className="h-4 w-4" />
+              Documento HTML
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="gap-2">
+            <Link href={ADMIN_DOC_LINKS.hub} target="_blank" rel="noopener noreferrer">
+              Índice
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="gap-2">
+            <Link href={ADMIN_DOC_LINKS.libraryBillingSection} target="_blank" rel="noopener noreferrer">
+              §30 Stripe/Library
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="gap-2">
+            <Link href={ADMIN_DOC_LINKS.backupSection} target="_blank" rel="noopener noreferrer">
+              Backupv1.4
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          </Button>
+        </div>
+      </AdminSection>
 
-      <p className="text-xs text-muted-foreground">
-        Última atualização: {metrics?.generatedAt ?? "carregando…"}
-      </p>
+      <AdminSection
+        title="Sync X (timeline)"
+        description="Sync manual: busca perfis X seguidos, enfileira posts novos e reinicia o timer de 30 min no cliente."
+        actions={
+          <Button size="sm" className="shrink-0 gap-2" onClick={() => void runUniversalXSync()} disabled={syncPending}>
+            <RefreshCw className={syncPending ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            {syncPending ? "Refreshing..." : "Refresh now"}
+          </Button>
+        }
+      >
+        {syncMessage || syncError ? (
+          <p className={syncError ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
+            {syncError ?? syncMessage}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">Última ação aparece aqui após o refresh.</p>
+        )}
+      </AdminSection>
+
+      <OfficialChannelAdmin initialChannel={initialOfficialChannel} />
+
+      <QubicChannelAdmin initialChannel={initialQubicChannel} />
+
+      <AdminSection
+        title="EchonX Reading Recommendation"
+        description="PDF e capa fixos no topo da biblioteca Audiopost para todos os utilizadores."
+      >
+        <div className="space-y-4">
+          {recommendation && !recommendationEditing ? (
+            <div className="flex flex-col gap-4 rounded-xl border border-border/70 bg-background/60 p-3 sm:flex-row">
+              <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                {recommendation.coverUrl ? (
+                  <img src={recommendation.coverUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
+                    No cover
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-primary">Current EchonX pick</p>
+                <h3 className="mt-1 text-lg font-semibold">{recommendation.title}</h3>
+                <p className="text-sm text-muted-foreground">{recommendation.author ?? "EchonX"}</p>
+                {recommendation.description ? (
+                  <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{recommendation.description}</p>
+                ) : null}
+                {recommendation.updatedAt ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Updated {new Date(recommendation.updatedAt).toLocaleString()}
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 gap-2"
+                onClick={() => {
+                  setRecommendationMessage(null);
+                  setRecommendationError(null);
+                  setRecommendationEditing(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            </div>
+          ) : (
+            <form className="space-y-4" onSubmit={onRecommendationSubmit}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="recommendation-title">Title</Label>
+                  <Input
+                    id="recommendation-title"
+                    name="title"
+                    defaultValue={recommendation?.title ?? ""}
+                    placeholder="EchonX recommended reading"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recommendation-author">Author</Label>
+                  <Input
+                    id="recommendation-author"
+                    name="author"
+                    defaultValue={recommendation?.author ?? ""}
+                    placeholder="Author or EchonX"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="recommendation-description">Description</Label>
+                <Textarea
+                  id="recommendation-description"
+                  name="description"
+                  defaultValue={recommendation?.description ?? ""}
+                  placeholder="Short note shown in the recommendation card."
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="recommendation-cover">Cover image</Label>
+                  <Input id="recommendation-cover" name="cover" type="file" accept="image/jpeg,image/png,image/webp" />
+                  <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 5 MB.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recommendation-pdf">PDF document</Label>
+                  <Input id="recommendation-pdf" name="pdf" type="file" accept="application/pdf,.pdf" />
+                  <p className="text-xs text-muted-foreground">
+                    PDF up to 25 MB. Required the first time; optional for metadata-only updates.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="submit" className="gap-2" disabled={recommendationPending}>
+                  <Upload className={recommendationPending ? "h-4 w-4 animate-pulse" : "h-4 w-4"} />
+                  {recommendationPending ? "Saving..." : "Save recommendation"}
+                </Button>
+                {recommendation ? (
+                  <Button type="button" variant="ghost" onClick={() => setRecommendationEditing(false)}>
+                    Cancel
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No fixed recommendation published yet.</span>
+                )}
+              </div>
+            </form>
+          )}
+
+          {recommendationMessage ? <p className="text-sm text-muted-foreground">{recommendationMessage}</p> : null}
+          {recommendationError ? <p className="text-sm text-destructive">{recommendationError}</p> : null}
+        </div>
+      </AdminSection>
+
+      <p className="admin-footer-meta">EchonX Admin · acesso restrito</p>
     </div>
+  );
+}
+
+function AdminSection({
+  title,
+  description,
+  icon,
+  actions,
+  variant = "default",
+  headCompact = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  icon?: ReactNode;
+  actions?: ReactNode;
+  variant?: "default" | "alert" | "stats";
+  headCompact?: boolean;
+  children?: ReactNode;
+}) {
+  const panelClass =
+    variant === "alert"
+      ? "admin-panel admin-panel--alert"
+      : variant === "stats"
+        ? "admin-panel admin-panel--stats"
+        : "admin-panel";
+
+  return (
+    <section className={panelClass}>
+      <div className={cn("admin-panel__head", headCompact && "admin-panel__head--compact")}>
+        <div>
+          <div className="admin-panel__title-row">
+            {icon}
+            <h2>{title}</h2>
+          </div>
+          {description ? <p className="admin-panel__desc">{description}</p> : null}
+        </div>
+        {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+      </div>
+      {children ? <div className="admin-panel__body">{children}</div> : null}
+    </section>
   );
 }
 
@@ -118,28 +430,23 @@ function MetricTile({
   icon,
   label,
   value,
-  suffix,
   hint,
 }: {
   icon: ReactNode;
   label: string;
   value?: number;
-  suffix?: string;
   hint: string;
 }) {
   return (
-    <Card className="border-border/80 bg-card/70">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+    <div className="admin-stat">
+      <div className="flex items-center justify-between gap-2">
+        <p className="admin-stat__label">{label}</p>
         {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold tracking-tight">
-          {typeof value === "number" ? value.toLocaleString("pt-BR") : "—"}
-          {suffix && typeof value === "number" ? suffix : null}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
-      </CardContent>
-    </Card>
+      </div>
+      <p className="admin-stat__value">
+        {typeof value === "number" ? value.toLocaleString("pt-BR") : "—"}
+      </p>
+      <p className="admin-stat__hint">{hint}</p>
+    </div>
   );
 }

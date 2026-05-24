@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 export default async function ProfilePage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/api/auth/signin?callbackUrl=/profile");
+    redirect("/login?callbackUrl=/profile");
   }
 
   const profile = await getMyProfile();
@@ -33,7 +33,12 @@ export default async function ProfilePage() {
           <Link href={`/u/${profile.username}`}>View public page</Link>
         </Button>
       </div>
-      <ProfileEditForm initialUsername={profile.username} initialBio={profile.bio} afterSave="stay-on-profile" />
+      <ProfileEditForm
+        initialDisplayName={profile.display_name ?? profile.name ?? null}
+        initialUsername={profile.username}
+        initialBio={profile.bio}
+        afterSave="stay-on-profile"
+      />
     </div>
   );
 }

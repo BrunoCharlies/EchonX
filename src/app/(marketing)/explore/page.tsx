@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
+import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function ExplorePage() {
+  const session = await auth();
+  if (session?.user) redirect("/app/explore");
+
   const supabase = await createClient();
   const { data: profiles } = await supabase
     .from("profiles")

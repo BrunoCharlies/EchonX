@@ -1,0 +1,3066 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Qubic, QPI e moeda EchonX — Análise</title>
+  <link rel="stylesheet" href="_explainer.css" />
+</head>
+<body>
+  <nav class="nav-top"><a href="/docs/html/readme">← README insights</a> · <a href="echonx-explicacoes-index.html">Índice</a></nav>
+
+  <header class="site-header">
+    <p class="eyebrow">Brainstorm · Maio 2026</p>
+    <h1>Qubic, QPI e possibilidade de moeda EchonX</h1>
+    <p class="lead">
+      Análise da linguagem de contratos Qubic, do que o app EchonX usa hoje, e de um caminho hipotético
+      para wallet + token + pagamento de assinatura. <span class="badge">Decisões registradas</span>
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. Duas “linguagens” no ecossistema</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Camada</th>
+            <th>Tecnologia</th>
+            <th>Tipo de restrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>EchonX (app)</strong></td>
+            <td>TypeScript, Next.js, Supabase, Web Speech</td>
+            <td>Regras de produto: planos, ~220 chars na fala, moderação, APIs</td>
+          </tr>
+          <tr>
+            <td><strong>Qubic (chain)</strong></td>
+            <td>C++ restrito + QPI (<code>qpi.h</code>), no core</td>
+            <td>Sem ponteiros, sem arrays C, estado em <code>StateData</code>, fees em QU, governança por computors</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        O repositório EchonX hoje integra Qubic como <strong>canal de conteúdo</strong> (espelho do X → Supabase),
+        não como smart contract de pagamentos. Stripe + <code>subscriptions.plan</code> cobrem assinatura off-chain.
+      </p>
+    </section>
+
+    <section>
+      <h2>2. O que a Qubic exige (resumo do contracts.md)</h2>
+      <ul>
+        <li>Contrato = struct <code>ContractBase</code> + <code>StateData</code>; memória estática (até ~1 GB, mas hash do estado custa por tick).</li>
+        <li>Única API externa: <strong>QPI</strong> — sem bibliotecas de terceiros.</li>
+        <li><strong>Procedures</strong> alteram estado (<code>state.mut()</code>); <strong>functions</strong> só leem (<code>state.get()</code>).</li>
+        <li>Ativos: <code>qpi.issueAsset()</code> — nome até 7 caracteres (ex.: <code>ECHONX</code>).</li>
+        <li>Deploy: PR no <code>qubic/core</code>, verificação formal, testes, <strong>proposta + voto dos computors</strong>, IPO, epoch de construção.</li>
+        <li>Contrato precisa <strong>queimar QU</strong> para reserva de execução — senão para de rodar.</li>
+      </ul>
+      <p>
+        Documentação oficial:
+        <a href="https://github.com/qubic/core/blob/main/doc/contracts.md" target="_blank" rel="noopener">Smart Contract Development (Qubic core)</a>
+      </p>
+    </section>
+
+    <section>
+      <h2>3. Capacidade de implementação (expectativa realista)</h2>
+      <div class="callout">
+        <strong>O assistente pode:</strong> desenhar procedures/functions, seguir restrições do subset C++, alinhar com <code>qpi.h</code>, esboçar testes e spec.
+      </div>
+      <div class="callout warn">
+        <strong>Não substitui:</strong> auditoria final de fundos, aprovação do core team, testnet multi-node, nem o processo de votação dos computors.
+      </div>
+      <p>“Dominar exatamente” o QPI = iterar com o código-fonte do core + ferramenta de verificação + revisão humana experiente em Qubic.</p>
+    </section>
+
+    <section>
+      <h2>4. Visão: moeda EchonX + wallet + assinatura</h2>
+      <h3>Produto desejado (hipótese)</h3>
+      <ol>
+        <li>Usuário compra moeda “EchonX” na plataforma.</li>
+        <li>Usa para pagar assinatura (planos Free / Starter / Popular / Pro).</li>
+        <li>Wallet na UI para ver e armazenar saldo.</li>
+      </ol>
+
+      <h3>Três modelos possíveis</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>On-chain</th>
+            <th>Off-chain</th>
+            <th>Prós</th>
+            <th>Contras</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A — Ledger no app</strong></td>
+            <td>Nenhum</td>
+            <td>Saldo em Postgres</td>
+            <td>Rápido; Stripe simples</td>
+            <td>Centralizado; não é cripto nativa</td>
+          </tr>
+          <tr>
+            <td><strong>B — Híbrido</strong></td>
+            <td>Contrato recebe QU + procedure <code>PayPlan</code></td>
+            <td>App desbloqueia <code>plan</code> após tx</td>
+            <td>Pagamento verificável</td>
+            <td>Contrato no core; UX de seed/wallet</td>
+          </tr>
+          <tr>
+            <td><strong>C — Asset ECHONX</strong></td>
+            <td><code>issueAsset</code> + contrato tesouraria</td>
+            <td>Indexer / espelho de saldo</td>
+            <td>Marca forte “moeda da plataforma”</td>
+            <td>Mais complexo que QU puro; fees de estado</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Fluxo natural na Qubic (assinatura)</h3>
+      <p>
+        Transaction → contrato com <code>inputType</code> “pagar plano X” → procedure valida
+        <code>invocator()</code> e valor → estado on-chain → EchonX indexa e atualiza
+        <code>subscriptions</code> no Supabase.
+      </p>
+
+      <h3>Wallet na plataforma</h3>
+      <ul>
+        <li><strong>Custodial:</strong> backend assina transações (compliance pesado).</li>
+        <li><strong>Não custodial:</strong> usuário traz seed / wallet Qubic; app só monta transações (melhor alinhamento, mais fricção).</li>
+      </ul>
+      <p>Falta hoje: vínculo explícito <code>profile</code> EchonX ↔ <code>id</code> Qubic (32 bytes).</p>
+    </section>
+
+    <section>
+      <h2>5. Ordem sugerida de trabalho</h2>
+      <ol>
+        <li>Economia: emissão, preço, reembolso, planos.</li>
+        <li>Protótipo com QU em testnet antes de asset custom.</li>
+        <li>Contrato mínimo: depositar, pagar plano, consultar saldo (function).</li>
+        <li>UI wallet + mapeamento de identidade.</li>
+        <li>IPO / integração core se fizer sentido estratégico.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>6. Perguntas para você responder</h2>
+      <p>Quando responder no chat, esta página pode ser atualizada com a seção “Decisões”.</p>
+      <ol>
+        <li>A moeda deve ser <strong>transferível entre usuários</strong> ou só crédito de consumo (não transferível)?</li>
+        <li>Assinatura em <strong>QU</strong>, em <strong>asset ECHONX</strong>, ou ambos?</li>
+        <li>Wallet <strong>custodial</strong> ou <strong>só chaves do usuário</strong>?</li>
+        <li>Objetivo principal: <strong>marca Qubic</strong> ou <strong>receita off-chain</strong> com token tipo pontos?</li>
+      </ol>
+    </section>
+
+    <section id="decisoes">
+      <h2>7. Suas respostas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Pergunta</th>
+            <th>Decisão</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Moeda transferível ou só crédito de consumo?</td>
+            <td><strong>Só crédito de consumo</strong> na plataforma. Transferência entre usuários fica para o <strong>futuro</strong>.</td>
+          </tr>
+          <tr>
+            <td>Assinatura em QU, ECHONX ou ambos?</td>
+            <td><strong>Ambos</strong> — o usuário pode pagar o plano com QU ou com o asset ECHONX.</td>
+          </tr>
+          <tr>
+            <td>Wallet custodial ou chaves do usuário?</td>
+            <td><strong>Wallet custodial</strong> — EchonX guarda e opera saldos em nome do usuário.</td>
+          </tr>
+          <tr>
+            <td>Objetivo: marca Qubic ou receita off-chain?</td>
+            <td><strong>Receita off-chain</strong> com token <strong>ECHONX</strong>. Qubic é uma cripto <em>aceita</em> no funil, mas o usuário precisa <strong>usar Qubic (QU) para comprar ECHONX</strong>; a assinatura consome ECHONX (ou QU conforme opção acima).</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>8. Modelo de produto (síntese)</h2>
+      <div class="callout">
+        <strong>Funil econômico:</strong> QU (Qubic) → compra de ECHONX → consumo (assinatura / serviços). Qubic não é o produto principal; é rampa de entrada para o token da plataforma.
+      </div>
+      <h3>Implicações técnicas (rascunho)</h3>
+      <ul>
+        <li><strong>Off-chain (EchonX):</strong> ledger de créditos ECHONX por usuário, custódia, preços de planos em ECHONX e em QU, Stripe opcional em paralelo até integração chain madura.</li>
+        <li><strong>On-chain (futuro):</strong> contrato ou integração Qubic para depósito de QU e emissão/crédito de ECHONX; procedures de pagamento de plano aceitando QU ou asset ECHONX.</li>
+        <li><strong>Não fazer agora:</strong> P2P de ECHONX entre usuários; wallet não custodial.</li>
+        <li><strong>Compliance:</strong> wallet custodial exige política de custódia, KYC/AML conforme jurisdição, e segurança de chaves no backend.</li>
+      </ul>
+      <h3>Modelo alinhado (vs. tabela da seção 4)</h3>
+      <p>
+        Combinação próxima do <strong>modelo A (ledger no app)</strong> para ECHONX como crédito de consumo, com
+        <strong>ponte B</strong> para aceitar QU na compra de ECHONX e no pagamento de assinatura. Asset on-chain ECHONX (modelo C) entra quando o contrato Qubic estiver aprovado no core.
+      </p>
+    </section>
+
+    <section id="ordem-wallet-token">
+      <h2>9. Por onde começar: carteira ou criptomoeda?</h2>
+      <div class="callout">
+        <strong>Recomendação:</strong> começar pela <strong>carteira (ledger) por perfil</strong> no EchonX — não pelo smart contract / asset ECHONX na Qubic.
+      </div>
+
+      <h3>Por quê nesta ordem?</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Ordem</th>
+            <th>O quê</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1º</strong></td>
+            <td>Definição da “moeda” como produto (ECHONX crédito)</td>
+            <td>Regras: não transferível (v1), unidade, decimais, quem emite (tesouraria EchonX), preço em QU.</td>
+          </tr>
+          <tr>
+            <td><strong>2º</strong></td>
+            <td>Carteira custodial <em>por perfil</em></td>
+            <td>Saldo, histórico, compra com QU (manual/admin no início), débito na assinatura. Tudo em Postgres + UI — sem IPO Qubic.</td>
+          </tr>
+          <tr>
+            <td><strong>3º</strong></td>
+            <td>Checkout de plano com ECHONX e/ou QU (espelho off-chain)</td>
+            <td>Valida receita e UX antes de chain.</td>
+          </tr>
+          <tr>
+            <td><strong>4º</strong></td>
+            <td>Asset / contrato ECHONX na Qubic</td>
+            <td>Meses + governança; espelha o ledger quando estiver pronto.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Se começar pela cripto on-chain primeiro</h3>
+      <ul>
+        <li>IPO, proposta aos computors, fees de execução, estado do contrato — <strong>sem usuário final usando</strong> por meses.</li>
+        <li>Carteira custodial no app ainda seria necessária para 99% dos usuários (não operam seed Qubic no dia a dia).</li>
+        <li>Risco de desenhar token on-chain que não bate com crédito de consumo off-chain.</li>
+      </ul>
+
+      <h3>Se começar pela carteira primeiro (ideal)</h3>
+      <ul>
+        <li>Cada <code>profile</code> ganha conta interna: saldo ECHONX, extrato, bloqueios.</li>
+        <li>“Comprar ECHONX com QU” pode ser <strong>fase 1 manual</strong> (admin credita após ver depósito) → <strong>fase 2</strong> API/indexer Qubic → <strong>fase 3</strong> contrato.</li>
+        <li>Assinatura já debita ECHONX do ledger; Stripe pode coexistir.</li>
+        <li>Quando o asset ECHONX existir na chain, a carteira vira <strong>ponte</strong> (depósito/saque), não recomeço do zero.</li>
+      </ul>
+
+      <h3>Metáfora</h3>
+      <p>
+        Primeiro o <strong>banco interno e o cartão de consumo</strong> (carteira + crédito ECHONX); depois a
+        <strong>nota oficial cunhada na rede</strong> (asset Qubic). O usuário só precisa ver saldo e pagar plano — não precisa saber em qual fase técnica você está.
+      </p>
+    </section>
+
+    <section id="carteira-multi-ativo">
+      <h2>10. Carteira primeiro: ECHONX + stablecoin + QU?</h2>
+      <div class="callout">
+        <strong>Sim.</strong> Se a carteira for um <strong>ledger custodial por perfil</strong> (conta interna), você pode
+        modelar vários <strong>tipos de saldo</strong> desde o dia 1 — não só ECHONX.
+      </div>
+
+      <h3>Como pensar a carteira</h3>
+      <p>
+        Não é “uma carteira blockchain” no v1; é uma <strong>conta EchonX</strong> com linhas de saldo por ativo:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Ativo na UI</th>
+            <th>Papel no produto</th>
+            <th>Custódia real (v1 típico)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>ECHONX</strong></td>
+            <td>Crédito de consumo (assinatura, serviços)</td>
+            <td>Ledger Postgres + tesouraria EchonX</td>
+          </tr>
+          <tr>
+            <td><strong>QU (Qubic)</strong></td>
+            <td>Entrada para comprar ECHONX; pagar plano (decisão: ambos)</td>
+            <td>Carteira custodial EchonX com endereço/ID Qubic da plataforma ou sub-conta por usuário (fase 2+)</td>
+          </tr>
+          <tr>
+            <td><strong>Stablecoin</strong> (ex. USDC)</td>
+            <td>Opcional: depósito em dólar, preço estável, menos volatilidade</td>
+            <td>Depósito on-chain em endereço custodial ou parceiro (CEX/API) — <em>não</em> é automático só por criar ledger</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Respostas diretas</h3>
+      <ul>
+        <li><strong>Saldo em stablecoin?</strong> Sim, se você adicionar o tipo de ativo no schema e definir como entra/sai (rede, parceiro, conversão para ECHONX).</li>
+        <li><strong>Custodiar QU (Qubic)?</strong> Sim — é o caso mais alinhado ao funil já decidido (QU → compra ECHONX). Na prática: usuário envia QU para depósito reconhecido pelo EchonX; o backend credita <code>balance_qu</code> na conta do perfil.</li>
+        <li><strong>ECHONX + QU + stable na mesma tela?</strong> Sim na UX; no banco são saldos separados com regras de conversão entre eles.</li>
+      </ul>
+
+      <h3>O que definir no desenho inicial (evita refatorar depois)</h3>
+      <ol>
+        <li>Tabela tipo <code>wallet_balances(profile_id, asset_code, amount)</code> — não uma coluna só <code>echonx</code>.</li>
+        <li><code>asset_code</code>: <code>ECHONX</code>, <code>QU</code>, <code>USDC</code> (etc.).</li>
+        <li>Ledger de movimentos: compra, assinatura, depósito, saque, conversão QU→ECHONX.</li>
+        <li>Regras por ativo: ECHONX não transferível (v1); QU/stable podem ter depósito/saque com KYC depois.</li>
+      </ol>
+
+      <h3>Cuidados</h3>
+      <ul>
+        <li><strong>Stablecoin</strong> implica rede (Ethereum, etc.), compliance, e custódia real de tokens — mais trabalho que QU+ECHONX só no ecossistema Qubic.</li>
+        <li><strong>QU custodial</strong> exige processo de depósito (endereço, confirmações, indexer) — pode começar manual/admin e automatizar depois.</li>
+        <li>Não confundir saldo <em>interno</em> (número no Postgres) com coins <em>on-chain</em> até a ponte de depósito/saque existir.</li>
+      </ul>
+
+      <div class="callout">
+        <strong>Recomendação de escopo v1:</strong> carteira multi-ativo no <em>modelo de dados</em>, mas produto mínimo =
+        <strong>ECHONX + QU</strong> (stablecoin na v2 se precisar de preço em dólar estável sem volatilidade).
+      </div>
+    </section>
+
+    <section id="pgledger-chain-portability">
+      <h2>11. Pgledger + mudar de chain (Qubic → Solana): a carteira continua compatível?</h2>
+      <div class="callout">
+        <strong>Sim — se a carteira for ledger interno e a blockchain for uma camada plugável.</strong>
+        Se o código misturar saldo no Postgres com lógica só Qubic, migrar para Solana vira reescrita. Com separação certa, a maior parte do pgledger permanece.
+      </div>
+
+      <h3>Duas camadas</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Camada</th>
+            <th>O quê</th>
+            <th>Muda ao trocar Qubic → Solana?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Ledger (pgledger)</strong></td>
+            <td>Saldos por perfil, extrato, assinatura em ECHONX</td>
+            <td><strong>Não</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Chain adapter</strong></td>
+            <td>Depósito/saque, confirmações, mint on-chain</td>
+            <td><strong>Sim</strong> (novo adaptador)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Resposta direta</h3>
+      <p>
+        <strong>Postgres primeiro maximiza compatibilidade.</strong> ECHONX pode ser só crédito interno; QU ou SOL são rampas de entrada via adaptador.
+        Troca-se QubicAdapter por SolanaAdapter — não o ledger. Evite amarrar migrations do ledger a IDs ou QPI da Qubic.
+      </p>
+    </section>
+
+    <section id="solana-tokenomics">
+      <h2>12. Criar ECHONX na Solana: facilita a tokenomics?</h2>
+      <div class="callout">
+        <strong>Facilita a parte técnica de “cunhar um token”</strong> — não substitui o desenho econômico (emissão, preço, consumo, tesouraria).
+        Para o EchonX, Solana é em geral <strong>mais rápida e barata</strong> que contrato no core Qubic; muda o funil se a entrada continuar sendo “QU compra ECHONX”.
+      </div>
+
+      <h3>O que “tokenomics” inclui (separar)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Bloco</th>
+            <th>Conteúdo</th>
+            <th>Solana ajuda?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Token on-chain</strong></td>
+            <td>SPL mint, supply, decimais, freeze/mint authority</td>
+            <td><strong>Muito</strong> — dias/semanas, ferramentas maduras (Metaplex, Anchor, etc.)</td>
+          </tr>
+          <tr>
+            <td><strong>Economia do produto</strong></td>
+            <td>Preço em QU/USD, crédito não transferível, assinatura, queima, tesouraria</td>
+            <td><strong>Pouco</strong> — é decisão de negócio + pgledger (igual em qualquer chain)</td>
+          </tr>
+          <tr>
+            <td><strong>Distribuição / vesting</strong></td>
+            <td>Alocações equipe, comunidade, liquidez</td>
+            <td><strong>Sim</strong> — padrões SPL + multisig (Squads) + lockups conhecidos</td>
+          </tr>
+          <tr>
+            <td><strong>Integração EchonX</strong></td>
+            <td>Depósito SPL → crédito pgledger; pagar plano</td>
+            <td><strong>Médio</strong> — indexer RPC, custódia hot wallet, mesmo papel que Qubic adapter</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Solana vs Qubic (para ECHONX on-chain)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Critério</th>
+            <th>Solana (SPL)</th>
+            <th>Qubic (core + QPI)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tempo até token existir</td>
+            <td>Curto (deploy programa/mint)</td>
+            <td>Longo (PR, IPO, computors, epochs)</td>
+          </tr>
+          <tr>
+            <td>Custo / complexidade dev</td>
+            <td>Ecossistema grande, docs, devs</td>
+            <td>C++ restrito, poucos contratos de referência</td>
+          </tr>
+          <tr>
+            <td>Alinhamento “QU → ECHONX”</td>
+            <td><strong>Fraco</strong> — entrada natural seria SOL/USDC</td>
+            <td><strong>Forte</strong> — QU nativo, narrativa Qubic</td>
+          </tr>
+          <tr>
+            <td>Compatível com pgledger primeiro</td>
+            <td><strong>Sim</strong> (SolanaAdapter)</td>
+            <td><strong>Sim</strong> (QubicAdapter)</td>
+          </tr>
+          <tr>
+            <td>Crédito consumo off-chain (v1)</td>
+            <td>Igual — Postgres não muda</td>
+            <td>Igual</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Avaliação para o seu caso (decisões já tomadas)</h3>
+      <p>Vocês definiram: receita off-chain, ECHONX consumo, custodial, <strong>QU compra ECHONX</strong>, assinatura em QU e ECHONX.</p>
+      <ul>
+        <li><strong>Se ECHONX nasce só na Solana:</strong> tokenomics <em>técnicas</em> mais fáceis, mas o funil “QU → compra ECHONX” vira estranho — usuário precisaria bridge QU→Solana ou comprar ECHONX com SOL/USDC na Solana.</li>
+        <li><strong>Modelo híbrido coerente:</strong> v1 = ECHONX só no pgledger (sem mint); v2 = SPL na Solana para quem quer “token de verdade”, saque/depósito; entrada principal USDC-SPL ou SOL; QU opcional via bridge ou fase Qubic depois.</li>
+        <li><strong>Modelo Qubic-first:</strong> mantém narrativa; tokenomics on-chain mais lentas; pgledger igual.</li>
+      </ul>
+
+      <h3>Veredito</h3>
+      <p>
+        <strong>Solana facilita criar o ativo e mecânicas on-chain</strong> (mint, vesting, DEX, liquidez) — ótimo se o objetivo é
+        <em>lançar token cripto rapidamente</em>. <strong>Não simplifica sozinha</strong> a tokenomics de produto EchonX
+        (crédito não transferível, preço de planos, tesouraria custodial). Para o funil atual (QU → ECHONX), Solana só é “melhor”
+        se vocês aceitarem <strong>mudar a rampa de entrada</strong> (ex. USDC/SOL na Solana) ou rodar <strong>dois ativos de entrada</strong>.
+      </p>
+      <p>
+        <strong>Recomendação estratégica:</strong> desenhe tokenomics de <em>negócio</em> no pgledger primeiro; escolha Solana para
+        mint público se prioridade for velocidade/ecossistema; mantenha Qubic como opção de pagamento/parceiro se a marca Qubic for importante —
+        não é obrigatório que o mint e a rampa sejam a mesma chain.
+      </p>
+    </section>
+
+    <section id="roadmap-pgledger-stripe">
+      <h2>13. Direção acordada (estudos — economia primeiro)</h2>
+      <div class="callout">
+        <strong>Decisão de produto:</strong> construir a <strong>economia dentro da plataforma</strong> com <strong>pgledger</strong>
+        antes de cripto on-chain. Primeiro produto comercial: <strong>assinaturas</strong> pagas com <strong>créditos ECHONX</strong>
+        comprados via <strong>Stripe</strong>. Outros tipos de transação ficam para fases posteriores.
+      </div>
+
+      <h3>Princípios</h3>
+      <ul>
+        <li><strong>Crédito ECHONX</strong> = unidade de consumo na plataforma (não transferível entre usuários na v1).</li>
+        <li><strong>Carteira por perfil</strong> = saldo + extrato contábil (auditoria, suporte, disputas).</li>
+        <li><strong>Stripe</strong> = rampa fiat para <em>comprar pacotes de créditos</em>; webhook confirma pagamento → credita pgledger.</li>
+        <li><strong>Assinatura</strong> = debita créditos ECHONX (e/ou mantém registro de plano em <code>subscriptions</code> para direitos de produto).</li>
+        <li><strong>On-chain</strong> (Qubic, Solana, QU) = fase futura; não bloqueia v1.</li>
+      </ul>
+
+      <h3>Fluxo v1 (assinatura)</h3>
+      <ol>
+        <li>Usuário compra pacote de créditos ECHONX (Stripe Checkout).</li>
+        <li>Webhook Stripe → EchonX credita <code>wallet_balance</code> + linha no ledger (<code>purchase_stripe</code>).</li>
+        <li>Usuário escolhe plano Starter / Popular / Pro (preço em créditos ECHONX).</li>
+        <li>Sistema debita créditos + ativa período de assinatura (<code>subscription_debit</code>).</li>
+        <li>Limites de plano (perfis X, etc.) continuam checados como hoje — enforcement ainda a implementar onde faltar.</li>
+      </ol>
+
+      <h3>Esboço pgledger (Postgres)</h3>
+      <p>Separar <strong>saldo atual</strong> de <strong>histórico imutável</strong> (contabilidade).</p>
+      <ul>
+        <li><code>wallet_accounts</code> — <code>profile_id</code>, <code>asset_code</code> (= <code>ECHONX</code> na v1), <code>balance</code> (cache derivado ou atualizado em transação).</li>
+        <li><code>wallet_ledger_entries</code> — <code>id</code>, <code>account_id</code>, <code>amount</code> (+/-), <code>reason</code>, <code>reference_type</code>, <code>reference_id</code>, <code>created_at</code>, <code>idempotency_key</code>.</li>
+        <li><code>credit_packages</code> — pacotes Stripe (ex. 1000 ECHONX por US$9).</li>
+        <li><code>subscription_entitlements</code> ou estender <code>subscriptions</code> — plano ativo, <code>valid_until</code>, ligado ao perfil.</li>
+      </ul>
+      <p>
+        Motivos de ledger sugeridos: <code>stripe_purchase</code>, <code>subscription_charge</code>, <code>admin_adjustment</code>,
+        <code>refund</code> (futuro). Toda mudança de saldo = 1 linha no ledger (append-only).
+      </p>
+
+      <h3>Fases sugeridas</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Fase</th>
+            <th>Escopo</th>
+            <th>Fora de escopo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td>Migration pgledger + API creditar/debitar + UI saldo/extrato</td>
+            <td>QU, Solana, P2P</td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td>Stripe: compra de pacotes → crédito ECHONX (webhook idempotente)</td>
+            <td>Assinatura recorrente Stripe automática (opcional depois)</td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td>Checkout assinatura em créditos ECHONX + <code>valid_until</code></td>
+            <td>Outros produtos (tips, marketplace)</td>
+          </tr>
+          <tr>
+            <td><strong>4+</strong></td>
+            <td>Novos <code>reason</code> no ledger; QU/stable; on-chain espelho</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Alinhamento com o código hoje</h3>
+      <ul>
+        <li>Já existe <code>subscriptions</code> + planos em <code>plans.ts</code> + Stripe env no <code>.env.example</code>.</li>
+        <li><code>src/app/api/webhooks/stripe/route.ts</code> tem TODO para persistir assinatura — na v1 pode primeiro creditar ECHONX e depois unificar com plano.</li>
+        <li>Audiopost / fila / likes <strong>não dependem</strong> do pgledger na fase 1.</li>
+      </ul>
+
+      <h3>Por que esta ordem é prudente</h3>
+      <p>
+        Valida receita e UX com ferramentas maduras (Stripe + Postgres) antes de IPO Qubic ou SPL Solana.
+        Tokenomics de negócio (preço do crédito, quanto custa cada plano em ECHONX) fica explícita no ledger e pode mudar sem redeploy de contrato.
+      </p>
+    </section>
+
+    <section id="creditos-usd-stripe">
+      <h2>14. Créditos ECHONX vs dólar no Stripe — precisa ser 1:1?</h2>
+      <div class="callout">
+        <strong>Não.</strong> Enquanto não existir criptomoeda on-chain, <strong>crédito ECHONX</strong> é unidade interna
+        (ponto de consumo). Vocês definem a <strong>tabela de conversão</strong> USD → créditos — como qualquer jogo ou SaaS com “coins”.
+      </div>
+
+      <h3>Três formas comuns (podem combinar)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>Como funciona</th>
+            <th>Prós</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A — Pacotes fixos</strong></td>
+            <td>Stripe vende SKUs: “US$9 → 1.000 créditos”, “US$19 → 2.200 créditos”</td>
+            <td>Simples na UI e no webhook; sem fórmula exposta</td>
+          </tr>
+          <tr>
+            <td><strong>B — Taxa configurável</strong></td>
+            <td><code>créditos = USD × taxa</code> (ex. 100 créditos por US$1)</td>
+            <td>Fácil ajustar inflação/bônus; Stripe cobra valor em USD, backend calcula créditos</td>
+          </tr>
+          <tr>
+            <td><strong>C — Preço do plano em créditos</strong></td>
+            <td>Assinatura não usa taxa na hora: Starter = 900 créditos/mês (fixo na config)</td>
+            <td>Desacopla “preço do plano” da “promoção de pacotes”</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Recomendação v1:</strong> <strong>A + C</strong> — pacotes Stripe na loja + tabela <code>plan_monthly_credits</code> para assinatura.</p>
+
+      <h3>“Parear 1:1” — o que isso pode significar</h3>
+      <ul>
+        <li><strong>1 crédito = US$0,01</strong> (100 créditos = US$1) — <em>peg mental</em>, não é obrigatório nem é “1 ECHONX = 1 USD” de cripto.</li>
+        <li><strong>1 crédito = 1 futuro token ECHONX</strong> — só definam isso no dia em que existir mint on-chain; até lá, crédito é só ledger.</li>
+        <li><strong>1 US$ do Stripe = 1 crédito</strong> — ruim (Popular US$19 = 19 créditos); números pequenos demais.</li>
+      </ul>
+
+      <h3>Exemplo alinhado aos planos atuais (US$9 / 19 / 29)</h3>
+      <p>Taxa de referência: <strong>100 créditos = US$1</strong> (configurável em <code>platform_config</code>).</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Preço USD/mês (hoje)</th>
+            <th>Custo em créditos/mês (C)</th>
+            <th>Equivalente na taxa 100:1</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Starter</td>
+            <td>US$9</td>
+            <td><strong>900</strong> créditos</td>
+            <td>9 × 100</td>
+          </tr>
+          <tr>
+            <td>Popular</td>
+            <td>US$19</td>
+            <td><strong>1.900</strong> créditos</td>
+            <td>19 × 100</td>
+          </tr>
+          <tr>
+            <td>Pro</td>
+            <td>US$29</td>
+            <td><strong>2.900</strong> créditos</td>
+            <td>29 × 100</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Pacotes Stripe (A) podem dar <strong>bônus</strong>: ex. pagar US$10 e receber 1.100 créditos (+10%) para incentivar compra maior que 1 mês.
+      </p>
+
+      <h3>Implementação no pgledger</h3>
+      <ul>
+        <li><code>credit_packages</code>: <code>stripe_price_id</code>, <code>usd_cents</code>, <code>credits_granted</code> (explícito — não só fórmula).</li>
+        <li><code>plan_catalog</code>: <code>plan_tier</code>, <code>credits_per_period</code>, <code>period_days</code> (= 30).</li>
+        <li>Webhook Stripe: <code>credits_granted</code> do pacote comprado → <code>wallet_ledger_entries</code> (+).</li>
+        <li>Ativar plano: debitar <code>credits_per_period</code> → ledger (−) se saldo suficiente.</li>
+        <li>Guardar <code>idempotency_key = stripe_session_id</code> para não creditar duas vezes.</li>
+      </ul>
+
+      <h3>Ajustes sem “quebrar” economia</h3>
+      <ul>
+        <li>Mudar taxa global só afeta <strong>novos</strong> pacotes; pacotes antigos já vendidos mantêm créditos prometidos.</li>
+        <li>Assinatura pode subir de 900 → 950 créditos/mês na config; quem já pagou período atual não re-debita até renovação.</li>
+        <li>Exibir sempre: “Créditos ECHONX são unidades de consumo na plataforma, não são criptomoeda negociável.”</li>
+      </ul>
+
+      <h3>Resposta direta</h3>
+      <p>
+        <strong>Não precisam parear 1:1 com um token futuro nem 1:1 com dólar literal.</strong> Definam uma
+        <strong>regra de negócio</strong> (ex. 100 créditos por dólar) ou <strong>pacotes fixos</strong> na Stripe;
+        preço de cada assinatura em créditos é uma segunda tabela. Isso é totalmente independente de existir moeda ECHONX on-chain depois.
+      </p>
+    </section>
+
+    <section id="creditos-avulsos-vs-saas">
+      <h2>15. Só créditos avulsos — perde o caráter de SaaS?</h2>
+      <div class="callout">
+        <strong>Não necessariamente</strong> — depende do que você vende. <strong>Crédito avulso</strong> é forma de
+        <em>pagar</em>; <strong>SaaS</strong> é forma de <em>empacotar o produto</em> (plano, período, direitos). Podem coexistir.
+      </div>
+
+      <h3>Três modelos lado a lado</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>O que o usuário compra</th>
+            <th>Parece SaaS?</th>
+            <th>MRR previsível</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SaaS clássico</strong></td>
+            <td>Assinatura US$19/mês (Stripe Subscription)</td>
+            <td><strong>Sim</strong></td>
+            <td><strong>Alto</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Só créditos avulsos</strong></td>
+            <td>Pacotes de créditos; gasta em “ações” (dias de plano, features)</td>
+            <td><strong>Fraco</strong> — parece prepago / wallet</td>
+            <td><strong>Baixo</strong> (compra esporádica)</td>
+          </tr>
+          <tr>
+            <td><strong>Híbrido (recomendado)</strong></td>
+            <td>Plano Starter/Pro com <strong>direito mensal</strong>; paga em <strong>créditos ECHONX</strong> (comprados na Stripe)</td>
+            <td><strong>Sim</strong> — continua plano + renovação</td>
+            <td><strong>Médio/alto</strong> se renovar todo mês</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>O que você descreveu (créditos → assinatura)</h3>
+      <p>
+        Isso <strong>não é “só avulso”</strong>: o produto comercializável continua sendo <strong>assinatura</strong> (SaaS).
+        O crédito é só <strong>meio de pagamento interno</strong> — como um “saldo na loja” antes de assinar.
+        Característica SaaS preservada se existir:
+      </p>
+      <ul>
+        <li><code>plan_tier</code> + <code>valid_until</code> (ou período mensal);</li>
+        <li>renovação explícita (todo mês debita X créditos ou avisa “recarregue”);</li>
+        <li>limites por plano (perfis X, Pro, etc.) — não “cada clique gasta crédito”.</li>
+      </ul>
+
+      <h3>Quando créditos avulsos <em>sim</em> enfraquecem SaaS</h3>
+      <ul>
+        <li>Usuário só compra pacotes quando acaba, sem plano nem data de renovação.</li>
+        <li>Cada feature tem micro-preço em créditos (pay-per-listen, pay-per-post) — vira marketplace, não assinatura.</li>
+        <li>Não há distinção Free / Starter / Pro — só saldo.</li>
+        <li>Métricas viram “venda de pacote”, não “assinantes ativos”.</li>
+      </ul>
+
+      <h3>Opinião / recomendação</h3>
+      <p>
+        <strong>Vender pacotes de créditos na Stripe não mata o SaaS</strong>, desde que o objeto vendido siga sendo
+        <strong>“acesso ao plano por período”</strong>, não “créditos como produto final”.
+      </p>
+      <ul>
+        <li><strong>Camada 1 (SaaS):</strong> entitlement — quem é Starter até quando.</li>
+        <li><strong>Camada 2 (pagamento):</strong> créditos ECHONX debitados na renovação (ou Stripe USD em paralelo para quem preferir).</li>
+        <li><strong>Camada 3 (opcional):</strong> top-up avulso — “recarregar carteira” entre meses, sem substituir o plano.</li>
+      </ul>
+      <p>
+        Mais tarde: Stripe Subscription em USD para quem não quer créditos + pacotes ECHONX para quem quer — mesmo plano, duas rampas.
+      </p>
+
+      <h3>Resumo em uma frase</h3>
+      <p>
+        <strong>Crédito avulso é a carteira; SaaS é a assinatura.</strong> Se a assinatura continuar existindo (mesmo paga em créditos),
+        você mantém SaaS. Só perde se o negócio virar exclusivamente “compre créditos e gaste até acabar” sem planos nem renovação.
+      </p>
+    </section>
+
+    <section id="renovacao-automatica-creditos">
+      <h2>16. Débito automático mensal em créditos + Stripe só para comprar saldo</h2>
+      <div class="callout ok">
+        <strong>Sim, pode ser realizado.</strong> Fluxo acordado: compra créditos na Stripe → saldo na carteira →
+        <strong>débito interno</strong> libera/renova o plano → todo mês o job tenta debitar de novo →
+        se falhar, banner “sem saldo” e CTA para a página de pagamento.
+      </div>
+
+      <h3>Duas cobranças diferentes (não confundir)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Momento</th>
+            <th>O que acontece</th>
+            <th>Stripe?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Comprar créditos</strong></td>
+            <td>Checkout paga pacote → webhook credita pgledger</td>
+            <td><strong>Sim</strong> (cartão, Link, Apple/Google Pay, etc. conforme conta Stripe)</td>
+          </tr>
+          <tr>
+            <td><strong>Ativar / renovar plano</strong></td>
+            <td>Debita X créditos ECHONX do saldo → estende <code>current_period_end</code></td>
+            <td><strong>Não</strong> — é só Postgres (pgledger)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        A renovação mensal <strong>não cobra o cartão de novo</strong> na v1 — só gasta o saldo que o usuário já comprou.
+        O cartão entra de novo quando ele volta à página de pagamento e compra outro pacote.
+      </p>
+
+      <h3>Fluxo completo (v1)</h3>
+      <ol>
+        <li><strong>Compra:</strong> Stripe Checkout (modo <code>payment</code>, pacote de créditos) → <code>checkout.session.completed</code> → credita carteira (idempotente por <code>session.id</code>).</li>
+        <li><strong>Escolher plano:</strong> usuário seleciona Starter / Popular / Pro na UI de billing.</li>
+        <li><strong>Primeira ativação:</strong> transação debita <code>plan_credits[plan]</code>; se saldo ≥ custo → <code>plan</code> + <code>current_period_end = now() + 1 month</code> + ledger <code>subscription_charge</code>.</li>
+        <li><strong>Renovação automática (cron):</strong> diário (ou a cada hora) busca assinaturas com <code>current_period_end &lt;= now()</code> e <code>billing_mode = credits</code> (ou equivalente).</li>
+        <li><strong>Tentativa de débito:</strong> mesma transação atômica: se saldo suficiente → debita + estende +1 mês; senão → <code>status = past_due</code> (ou mantém plano até fim do período já pago e depois rebaixa).</li>
+        <li><strong>Sem saldo:</strong> banner no app + e-mail opcional: “Saldo insuficiente — recarregue créditos” → link para <code>/app/settings/billing</code> (ou pricing) com pacotes Stripe.</li>
+      </ol>
+
+      <h3>Estados sugeridos em <code>subscriptions</code></h3>
+      <ul>
+        <li><code>active</code> — período pago, direitos do plano.</li>
+        <li><code>past_due</code> — período expirou e débito falhou; limites do Free ou “somente leitura” até recarregar.</li>
+        <li><code>canceled</code> — usuário cancelou renovação (não tenta debitar no próximo ciclo).</li>
+      </ul>
+      <p>Campos úteis: <code>billing_mode</code> (<code>credits</code> | <code>stripe_usd</code> futuro), <code>renewal_credits</code>, <code>last_debit_at</code>, <code>last_debit_error</code>.</p>
+
+      <h3>Implementação técnica (ainda não no código)</h3>
+      <ul>
+        <li><strong>Pgledger</strong> — fase 1 do §13 (tabelas + debitar/creditar atômico).</li>
+        <li><strong>Webhook Stripe</strong> — estender <code>src/app/api/webhooks/stripe/route.ts</code> para <code>checkout.session.completed</code> (hoje só TODO em subscription events).</li>
+        <li><strong>Cron</strong> — <code>/api/cron/subscription-renewal</code> (Vercel Cron) ou Supabase <code>pg_cron</code>; proteger com <code>CRON_SECRET</code>.</li>
+        <li><strong>Idempotência</strong> — chave <code>renewal:{owner_x_user_id}:{period_end_iso}</code> no ledger para não debitar duas vezes no mesmo ciclo.</li>
+        <li><strong>UI</strong> — saldo, extrato, escolha de plano, banner <code>past_due</code>.</li>
+      </ul>
+
+      <h3>Meios de pagamento Stripe (v1)</h3>
+      <p>
+        Na <strong>compra de créditos</strong>, Stripe Checkout aceita o que estiver habilitado na conta:
+        cartão, Link, Apple Pay, Google Pay, ACH (EUA), etc. Vocês controlam em
+        <a href="https://dashboard.stripe.com/settings/payment_methods" target="_blank" rel="noopener">Payment methods</a>
+        e no <code>payment_method_types</code> da sessão.
+      </p>
+      <p>
+        <strong>Por enquanto:</strong> só rampa fiat Stripe para <em>entrada</em> de créditos; renovação = débito interno.
+        Assinatura recorrente Stripe em USD (cobrança automática no cartão todo mês sem passar pela carteira) fica como <strong>fase opcional</strong> paralela.
+      </p>
+
+      <h3>Grace period (opcional)</h3>
+      <p>
+        Ex.: 3 dias após <code>current_period_end</code> ainda com plano ativo mas banner “renove em breve”;
+        depois <code>past_due</code>. Melhora UX sem cobrar cartão automaticamente.
+      </p>
+
+      <h3>Resposta direta</h3>
+      <p>
+        <strong>Sim:</strong> compra créditos (Stripe) → débito automático libera plano → cron mensal debita de novo →
+        falha → mensagem sem saldo + voltar à página de pagamento. Stripe na v1 só para <strong>comprar créditos</strong>;
+        renovação é lógica EchonX + pgledger.
+      </p>
+    </section>
+
+    <section id="recarga-recorrente-cartao">
+      <h2>17. Quem decide a recorrência no cartão? Recarga automática de créditos</h2>
+      <div class="callout">
+        <strong>Vocês definem o produto;</strong> o cliente <strong>aceita explicitamente</strong> ao cadastrar o cartão num fluxo
+        de <strong>assinatura / recarga automática</strong>. Desconto no cartão é regra <strong>sua</strong> (cupom Stripe); o cliente só aplica se vocês permitirem código promocional.
+      </div>
+
+      <h3>Dois “relógios” mensais (complementares)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Relógio</th>
+            <th>Quem cobra</th>
+            <th>O que faz</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A — Recarga de créditos (fiat)</strong></td>
+            <td><strong>Stripe</strong> no cartão salvo</td>
+            <td>Todo mês (ou quando saldo baixo): credita ECHONX na carteira</td>
+          </tr>
+          <tr>
+            <td><strong>B — Renovação do plano (SaaS)</strong></td>
+            <td><strong>EchonX</strong> (pgledger)</td>
+            <td>No <code>current_period_end</code>: debita créditos → +30 dias de plano</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        O cenário ideal que você descreveu usa <strong>os dois</strong>: A mantém saldo; B mantém entitlement.
+        Se só existir B sem A, o usuário precisa comprar pacotes manualmente quando acabar o saldo.
+      </p>
+
+      <h3>Quem decide se é recorrente?</h3>
+      <ul>
+        <li><strong>EchonX (produto):</strong> vocês oferecem SKUs distintos — ex. “Pacote 1000 créditos (único)” vs “Recarga mensal 1000 créditos (automático)”.</li>
+        <li><strong>Cliente:</strong> escolhe e confirma no Checkout; cadastra cartão num fluxo com texto claro (“cobrança mensal até cancelar”).</li>
+        <li><strong>Stripe:</strong> executa o que o SKU/modo pedir — <code>payment</code> (único) ou <code>subscription</code> (recorrente).</li>
+        <li><strong>Desconto:</strong> vocês criam cupom/promo no Stripe; pode ser automático num plano ou o cliente digita código — isso é configuração <strong>sua</strong>, não decisão solta do gateway.</li>
+      </ul>
+      <p>
+        Compra avulsa com desconto <strong>não vira recorrente sozinha</strong> — só vira recorrente se o produto/checkout for
+        <strong>subscription</strong> ou se o cliente ativar “recarga automática” (opt-in separado).
+      </p>
+
+      <h3>Como cadastrar cartão para compra mensal de créditos (recomendado)</h3>
+      <p><strong>Opção 1 — Stripe Subscription no pacote de créditos (mais simples)</strong></p>
+      <ol>
+        <li>Produto Stripe: “Recarga mensal — 1900 créditos” (preço recorrente / mês).</li>
+        <li>Checkout <code>mode: subscription</code> → cliente salva cartão; Stripe cobra todo mês.</li>
+        <li>Webhook <code>invoice.paid</code> → credita pgledger (<code>stripe_subscription_reload</code>).</li>
+        <li>Cron B debita plano se saldo ≥ custo do tier.</li>
+      </ol>
+      <p><strong>Opção 2 — Cartão salvo + cobrança off-session (mais flexível, mais trabalho)</strong></p>
+      <ol>
+        <li>SetupIntent / Customer salva <code>payment_method</code>.</li>
+        <li>Flag <code>auto_reload_enabled</code> + valor/pacote escolhido pelo cliente.</li>
+        <li>Cron ou saldo &lt; limiar → <code>PaymentIntent</code> com <code>off_session: true</code>.</li>
+        <li>Falha de 3DS → e-mail + link para reautenticar (SCA Europa/BR conforme caso).</li>
+      </ol>
+      <p>Para v1, a <strong>Opção 1</strong> costuma bastar e alinha com “cliente cadastra cartão para recarga mensal”.</p>
+
+      <h3>Alinhar valores (evitar surpresa)</h3>
+      <ul>
+        <li>Definir pacote recorrente ≥ custo mensal do plano em créditos (ex. Popular = 1900 créditos/mês → recarga Stripe de 1900 ou 2000).</li>
+        <li>Ou: na ativação do plano, sugerir “Ative recarga automática de X créditos” com um clique.</li>
+        <li>Se A creditar depois de B tentar debitar, usar ordem no cron: primeiro processar recargas Stripe pendentes / saldo, depois débito de plano (ou grace de alguns dias).</li>
+      </ul>
+
+      <h3>Cancelamento e portal</h3>
+      <ul>
+        <li>Cliente cancela <strong>recarga Stripe</strong> no Customer Portal → para de entrar crédito; plano pode cair em <code>past_due</code> quando B falhar.</li>
+        <li>Cliente cancela só <strong>renovação de plano</strong> → para de debitar B; saldo pode sobrar na carteira.</li>
+        <li>Deixar explícito na UI: “Recarga automática de créditos” ≠ “Plano Popular ativo” (dois toggles ou um pacote bundled).</li>
+      </ul>
+
+      <h3>Resumo</h3>
+      <p>
+        <strong>Quem decide o modelo recorrente: vocês (catálogo).</strong>
+        <strong>Quem autoriza cobrar de novo: o cliente</strong> (aceite no Checkout / portal).
+        Fluxo desejado: cartão salvo → Stripe recarrega créditos todo mês → ledger debita plano → +30 dias.
+        Compra única com desconto não substitui isso; é outro SKU.
+      </p>
+    </section>
+
+    <section id="x-api-custos-escala">
+      <h2>18. API do X (pay-per-use) — gasto real, limites de plano e simulação de escala</h2>
+      <div class="callout">
+        <strong>Objetivo:</strong> decidir limites de contas X por plano com base no custo observado no X Developer Console
+        (Echonx, pay-per-use) e no comportamento do código EchonX (sync + importação).
+      </div>
+
+      <h3>Gasto observado (Maio 2026 — testes + uso)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Crédito inicial (referência)</td>
+            <td><strong>US$ 5,00</strong></td>
+          </tr>
+          <tr>
+            <td>Saldo restante (painel X)</td>
+            <td><strong>US$ 2,67</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Gasto total estimado</strong></td>
+            <td><strong>US$ 2,33</strong></td>
+          </tr>
+          <tr>
+            <td>Pico 17/05 (requests)</td>
+            <td>~<strong>857</strong> requests (~US$ 0,55 no gráfico de uso)</td>
+          </tr>
+          <tr>
+            <td><strong>Custo médio por request</strong> (17/05)</td>
+            <td>US$ 0,55 ÷ 857 ≈ <strong>US$ 0,00064</strong> (~US$ 0,64 / 1.000 requests)</td>
+          </tr>
+          <tr>
+            <td>Requests totais no período (ordem de grandeza)</td>
+            <td>US$ 2,33 ÷ 0,00064 ≈ <strong>~3.600 requests</strong> (testes de import + sync com app aberto)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        O pico <strong>15–18/05</strong> reflete <strong>desenvolvimento</strong> (várias importações, sync automático, possível ingest Qubic/admin),
+        não o perfil de um único ouvinte Free no dia a dia.
+      </p>
+
+      <h3>Como o EchonX consome a API do X</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Ação</th>
+            <th>Chamadas X API v2</th>
+            <th>Onde no código</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Adicionar perfil X</td>
+            <td><strong>2</strong> — <code>users/by/username</code> + timeline (~10 tweets)</td>
+            <td><code>addXProfileToListening</code></td>
+          </tr>
+          <tr>
+            <td>Sync automático (por perfil <code>external_x</code> seguido)</td>
+            <td><strong>1</strong> — <code>user_tweets</code></td>
+            <td><code>syncMyXListeningQueue</code> via <code>/api/x/sync</code></td>
+          </tr>
+          <tr>
+            <td>Botão “Sync now”</td>
+            <td><strong>1</strong> por perfil X customizado</td>
+            <td>mesma action</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Intervalos de sync</strong> (com Audiopost ativo e usuário logado):</p>
+      <ul>
+        <li>App aberto, player fechado: a cada <strong>30 min</strong></li>
+        <li>Player Audiopost aberto: a cada <strong>10 min</strong></li>
+      </ul>
+      <p>
+        <strong>Free:</strong> só @qubic oficial + perfis nativos EchonX — o sync <strong>não</strong> percorre contas X customizadas
+        (<code>external_x</code> fora do canal oficial). Custo X da Free tende a <strong>~zero</strong> para listening customizado.
+      </p>
+
+      <h3>Limites de produto (proposta para decisão)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Contas X customizadas</th>
+            <th>Free / incluso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Free</strong></td>
+            <td><strong>0</strong></td>
+            <td>Oficial <strong>@qubic</strong> no X + nativos EchonX ilimitados</td>
+          </tr>
+          <tr>
+            <td><strong>Starter</strong></td>
+            <td><strong>3</strong></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Popular</strong></td>
+            <td><strong>5</strong></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Pro</strong></td>
+            <td><strong>15</strong></td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="meta">
+        Nota: o código em produção pode ainda refletir limites anteriores (ex. Free 0 custom, Starter 1) até atualizar <code>plans.ts</code>
+        para 3 / 5 / 15.
+      </p>
+
+      <h3>Modelo de custo por slot de perfil X (por mês)</h3>
+      <p>Um <em>slot</em> = uma conta X customizada seguida. Requests/mês por slot conforme tempo com app aberto:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Perfil de uso</th>
+            <th>App aberto (ordem de grandeza)</th>
+            <th>Syncs/mês por slot</th>
+            <th>Custo/mês por slot (US$ 0,00064/req)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Leve</td>
+            <td>~30 min/dia</td>
+            <td>~30</td>
+            <td>~US$ 0,02</td>
+          </tr>
+          <tr>
+            <td><strong>Médio</strong> (base das simulações)</td>
+            <td>~2 h/dia</td>
+            <td>~120</td>
+            <td>~US$ 0,08</td>
+          </tr>
+          <tr>
+            <td>Pesado</td>
+            <td>~8 h/dia (player aberto parte do tempo)</td>
+            <td>~480</td>
+            <td>~US$ 0,31</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Custo API X por usuário pago (slots 100% cheios, uso médio)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Preço (referência)</th>
+            <th>Slots máx.</th>
+            <th>Requests/mês (médio)</th>
+            <th>Custo X/mês</th>
+            <th>% do preço (só API)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Starter</td>
+            <td>US$ 9</td>
+            <td>3</td>
+            <td>360</td>
+            <td>~US$ 0,23</td>
+            <td>~2,5%</td>
+          </tr>
+          <tr>
+            <td>Popular</td>
+            <td>US$ 19</td>
+            <td>5</td>
+            <td>600</td>
+            <td>~US$ 0,38</td>
+            <td>~2%</td>
+          </tr>
+          <tr>
+            <td>Pro</td>
+            <td>US$ 29</td>
+            <td>15</td>
+            <td>1.800</td>
+            <td>~US$ 1,15</td>
+            <td>~4%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Uso <strong>pesado</strong> no Pro (15 × 480 = 7.200 req): ~<strong>US$ 4,61/mês</strong> — ainda cabível em US$ 29 se for minoria.</p>
+
+      <h3>Simulação: 1.000 usuários</h3>
+      <p><strong>Premissas:</strong> uso <strong>médio</strong>; cada pagante preenche em média <strong>60%</strong> dos slots; mix de planos pagos <strong>50% Starter · 35% Popular · 15% Pro</strong>.</p>
+
+      <h4>Cenário A — 1.000 MAU, 20% pagos (200 usuários)</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Usuários</th>
+            <th>Slots ativos (60% do máx.)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Starter</td><td>100</td><td>100 × 3 × 0,6 = 180</td></tr>
+          <tr><td>Popular</td><td>70</td><td>70 × 5 × 0,6 = 210</td></tr>
+          <tr><td>Pro</td><td>30</td><td>30 × 15 × 0,6 = 270</td></tr>
+          <tr><td><strong>Total</strong></td><td>200</td><td><strong>660 slots</strong></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Requests/mês: 660 × 120 ≈ <strong>79.200</strong></li>
+        <li>Custo X/mês: 79.200 × 0,00064 ≈ <strong>US$ 51</strong></li>
+        <li>Custo médio por <strong>usuário pago</strong>: ≈ <strong>US$ 0,26/mês</strong></li>
+      </ul>
+
+      <h4>Cenário B — 1.000 usuários todos pagos (pior caso teórico)</h4>
+      <ul>
+        <li>Slots ativos: (500×3 + 350×5 + 150×15) × 0,6 ≈ <strong>3.300</strong></li>
+        <li>Uso médio: 3.300 × 120 ≈ <strong>396.000</strong> requests → <strong>~US$ 253/mês</strong></li>
+        <li>Uso pesado: 3.300 × 480 ≈ <strong>1,58M</strong> requests → <strong>~US$ 1.014/mês</strong></li>
+      </ul>
+
+      <h3>Conferir gasto real no Supabase</h3>
+      <p>Tabela <code>x_api_usage_events</code> (migration <code>00010</code>):</p>
+      <pre><code>select
+  count(*) as requests,
+  endpoint,
+  source,
+  ok
+from public.x_api_usage_events
+where created_at &gt;= now() - interval '30 days'
+group by endpoint, source, ok
+order by requests desc;</code></pre>
+
+      <h3>Conclusão para limites 3 / 5 / 15</h3>
+      <ul>
+        <li>Com pay-per-use atual, <strong>Starter 3 · Popular 5 · Pro 15</strong> é <strong>economicamente viável</strong> se a maioria for Free e poucos forem Pro “pesado” o dia inteiro.</li>
+        <li><strong>Free sem X custom</strong> protege margem e escala (só Qubic + nativos).</li>
+        <li>Maior risco: Pro com 15 slots + app sempre aberto (sync 10 min) + testes em produção sem throttle.</li>
+      </ul>
+
+      <h3>Recomendações operacionais</h3>
+      <ul>
+        <li>Auto-recharge no X Developer com <strong>teto mensal</strong> (ex. US$ 50–100) até validar MAU real.</li>
+        <li>Preferir <strong>sync global a cada 30 min</strong> (§19) em vez de sync por browser aberto — custo previsível e sem duplicar o mesmo @.</li>
+        <li>Dashboard interno a partir de <code>x_api_usage_events</code>.</li>
+        <li>Separar ambiente de testes (menos sync / menos perfis) do tráfego de usuários reais.</li>
+      </ul>
+    </section>
+
+    <section id="sync-global-30min">
+      <h2>19. Sync global da plataforma (a cada 30 minutos)</h2>
+      <div class="callout ok">
+        <strong>Sim, é viável.</strong> Um único job a cada <strong>30 min</strong> sincroniza todos os perfis X
+        <strong>distintos</strong> seguidos na plataforma — não “30 min por usuário” nem “30 min por slot repetido”.
+      </div>
+
+      <h3>Hoje vs sync global</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>Comportamento</th>
+            <th>Requests <code>user_tweets</code> a cada 30 min</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Hoje (por cliente)</strong></td>
+            <td>Com Audiopost ativo, cada browser chama <code>/api/x/sync</code> no intervalo (30 min ou 10 min com player)</td>
+            <td><strong>Soma</strong> dos perfis X de cada usuário com app aberto — duplica se muitos seguem o mesmo @</td>
+          </tr>
+          <tr>
+            <td><strong>Proposto (global)</strong></td>
+            <td>Cron <code>/api/cron/x-listening-sync</code> (ex.) a cada 30 min no servidor</td>
+            <td><strong>1 request por perfil X único</strong> na plataforma; depois enfileira para todos os ouvintes</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Já existe deduplicação no código (admin)</h3>
+      <p>
+        <code>syncAllXListeningQueuesForAdmin</code> agrupa <code>want_to_hear</code> por <code>target_profile_id</code>,
+        chama <code>getLatestXPosts</code> <strong>uma vez</strong> por perfil <code>external_x</code> e replica a fila para cada
+        <code>listener_x_user_id</code>. O sync global deve reutilizar essa mesma lógica (sem exigir sessão admin).
+      </p>
+
+      <h3>Variável para previsão: U</h3>
+      <p>
+        <strong>U</strong> = quantidade de perfis X <strong>customizados distintos</strong> com pelo menos um seguidor em
+        <code>want_to_hear</code> (cada @ conta uma vez, mesmo com 100 ouvintes). Não inclui canal oficial @qubic/curator
+        fora de <code>external_x</code> billable. Free sem X custom mantém <strong>U</strong> baixo.
+      </p>
+      <pre><code>-- U aproximado (perfis external_x distintos seguidos)
+select count(distinct w.target_profile_id) as u_profiles
+from public.want_to_hear w
+join public.profiles p on p.id = w.target_profile_id
+where p.kind = 'external_x';</code></pre>
+
+      <h3>Previsão de sync (global, intervalo 30 min)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Fórmula (só timeline <code>user_tweets</code>)</th>
+            <th>Exemplo U = 200</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A cada <strong>30 min</strong></td>
+            <td><strong>U</strong></td>
+            <td>200 requests</td>
+          </tr>
+          <tr>
+            <td>Por <strong>dia</strong></td>
+            <td><strong>U × 48</strong> (24h ÷ 0,5h)</td>
+            <td>9.600 requests</td>
+          </tr>
+          <tr>
+            <td>Por <strong>mês</strong> (~30 dias)</td>
+            <td><strong>U × 1.440</strong></td>
+            <td>288.000 requests</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Com custo observado <strong>US$ 0,00064/request</strong> (§18):</p>
+      <ul>
+        <li>Custo/dia ≈ <strong>U × 48 × 0,00064</strong> → U=200 → ~<strong>US$ 6,14/dia</strong></li>
+        <li>Custo/mês ≈ <strong>U × 1.440 × 0,00064</strong> → U=200 → ~<strong>US$ 184/mês</strong> (só sync global)</li>
+      </ul>
+      <p>
+        <strong>Adicionar perfil novo</strong> (fora do cron): ainda <strong>+2</strong> requests pontuais
+        (<code>users/by/username</code> + timeline). Ingest Qubic: cron separado, somar à parte.
+      </p>
+
+      <h3>Exemplo alinhado aos limites 3 / 5 / 15</h3>
+      <p>
+        Se na plataforma existirem <strong>U = 660</strong> perfis X <strong>únicos</strong> seguidos (cenário com overlap —
+        menos que “660 slots” se muitos usuários seguem os mesmos @):
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Syncs/dia</td><td>660 × 48 = <strong>31.680</strong></td></tr>
+          <tr><td>Custo/dia (API)</td><td>≈ <strong>US$ 20,28</strong></td></tr>
+          <tr><td>Custo/mês (API)</td><td>≈ <strong>US$ 608</strong></td></tr>
+        </tbody>
+      </table>
+      <p>Se 100 usuários seguem os mesmos 80 @, <strong>U = 80</strong>, não 300 — o global <strong>reduz</strong> custo vs sync por browser.</p>
+
+      <h3>Comparado ao sync “cada cliente a cada 30 min”</h3>
+      <p>
+        Custo por janela de 30 min ≈ <strong>Σ (perfis X de cada usuário com app aberto)</strong>. Com 100 usuários ativos e
+        3 perfis cada, sem overlap: <strong>300</strong> calls vs <strong>U = 80</strong> no global (exemplo acima).
+      </p>
+      <p><strong>Previsibilidade:</strong> no global o gasto depende de <strong>U</strong> (curva da plataforma), não de quantos browsers estão abertos.</p>
+
+      <h3>Implementação recomendada</h3>
+      <ol>
+        <li>Cron <code>POST /api/cron/x-listening-sync</code> a cada 30 min (Vercel Cron + <code>CRON_SECRET</code>).</li>
+        <li>Extrair lógica de <code>syncAllXListeningQueuesForAdmin</code> para função server-side sem auth admin.</li>
+        <li><strong>Desligar ou reduzir</strong> sync automático no browser (<code>listen-queue-provider</code> 10/30 min) para não pagar duas vezes — manter “Sync now” manual opcional.</li>
+        <li>Só assinantes com X custom em <code>want_to_hear</code> entram em U (Free: Qubic + nativos).</li>
+        <li>Rate limit / batch se U crescer (pausa entre perfis; fila se U &gt; 500).</li>
+      </ol>
+
+      <h3>Trade-off de produto</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Pró</th>
+            <th>Contra</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Posts podem entrar na fila <strong>sem app aberto</strong></td>
+            <td>Atraso máximo ~<strong>30 min</strong> até novo tweet na fila</td>
+          </tr>
+          <tr>
+            <td>Custo API previsível (<strong>U × 48/dia</strong>)</td>
+            <td>Job servidor deve caber no timeout (batch se U grande)</td>
+          </tr>
+          <tr>
+            <td>Sem duplicar API para o mesmo @</td>
+            <td>Precisa monitorar rate limit do X em picos</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Resumo em uma frase</h3>
+      <p>
+        <strong>Sync global 30 min:</strong> requests/dia de timeline ≈ <strong>U × 48</strong>; implementar via cron deduplicado
+        e parar sync por cliente para não dobrar o gasto.
+      </p>
+    </section>
+
+    <section id="sync-global-somente-online">
+      <h2>20. Sync global só para “online” — reduz custo?</h2>
+      <div class="callout ok">
+        <strong>Sim, o custo reduz</strong> em relação ao sync global “sempre todos os perfis”, porque passa a depender de
+        <strong>U<sub>online</sub></strong> (perfis X únicos com pelo menos um ouvinte online) em vez de <strong>U</strong> (todos).
+        <strong>É possível</strong> no EchonX: já existe <code>profiles.last_seen_at</code> atualizado pelo heartbeat (~60s com Audiopost ativo).
+      </div>
+
+      <h3>Três modelos (relembrar)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>Depende de usuários online?</th>
+            <th>Variável de custo (timeline / 30 min)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sync por browser (hoje)</td>
+            <td><strong>Sim</strong></td>
+            <td>Soma dos perfis X de cada usuário com app aberto</td>
+          </tr>
+          <tr>
+            <td>Sync global “sempre” (§19)</td>
+            <td><strong>Não</strong></td>
+            <td><strong>U</strong> — todos os @ distintos seguidos na plataforma</td>
+          </tr>
+          <tr>
+            <td><strong>Sync global só online</strong> (esta seção)</td>
+            <td><strong>Sim</strong></td>
+            <td><strong>U<sub>online</sub></strong> — @ distintos com ≥1 ouvinte “online”</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>O que significa “online” no EchonX (hoje)</h3>
+      <ul>
+        <li><code>POST /api/presence/heartbeat</code> atualiza <code>profiles.last_seen_at</code> do usuário logado.</li>
+        <li>Disparado pelo cliente com Audiopost (~a cada <strong>60s</strong>) enquanto o painel de listening está ativo.</li>
+        <li>Admin considera <strong>online</strong> quem tem <code>last_seen_at</code> nos últimos <strong>2 minutos</strong>.</li>
+      </ul>
+      <p>
+        Para o cron de sync, usar janela parecida (ex. <strong>5–30 min</strong>) para não cortar usuário entre dois heartbeats.
+      </p>
+
+      <h3>Definição de U<sub>online</sub></h3>
+      <p>
+        <strong>U<sub>online</sub></strong> = contagem de perfis <code>external_x</code> <strong>distintos</strong> em <code>want_to_hear</code>
+        para os quais existe pelo menos um <code>listener_x_user_id</code> cujo perfil nativo tem
+        <code>last_seen_at &gt; now() - intervalo_online</code>.
+      </p>
+      <pre><code>-- U_online (ex.: online = últimos 30 min)
+select count(distinct w.target_profile_id) as u_online
+from public.want_to_hear w
+join public.profiles target on target.id = w.target_profile_id and target.kind = 'external_x'
+join public.profiles listener on listener.id = w.listener_x_user_id
+where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
+      <p>
+        A cada <strong>30 min</strong> o job global chama <code>getLatestXPosts</code> só para esses <strong>U<sub>online</sub></strong> perfis
+        (deduplicado, como no admin), e enfileira para todos os seguidores — inclusive os que estão offline
+        <em>desse mesmo @</em> (decisão de produto abaixo).
+      </p>
+
+      <h3>1.000 usuários, só 500 “online” — o custo cai?</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>1.000 cadastrados, 500 online</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Global sempre (§19)</td>
+            <td><strong>Mesmo custo</strong> — usa <strong>U</strong>, não importa quantos browsers abertos</td>
+          </tr>
+          <tr>
+            <td><strong>Global só online</strong></td>
+            <td><strong>Custo menor</strong> se <strong>U<sub>online</sub> &lt; U</strong> (típico quando metade está offline)</td>
+          </tr>
+          <tr>
+            <td>Sync por browser</td>
+            <td><strong>Custo menor</strong> (~proporcional aos 500 com app aberto), mas duplica API no mesmo @</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Exemplo numérico:</strong></p>
+      <ul>
+        <li><strong>U = 400</strong> perfis X únicos na plataforma (todos os seguidores).</li>
+        <li><strong>500 online</strong> — só seguem coletivamente <strong>120</strong> desses @ agora → <strong>U<sub>online</sub> = 120</strong>.</li>
+        <li>Global sempre: 400 × 48 = <strong>19.200</strong> req/dia.</li>
+        <li>Global só online: 120 × 48 = <strong>5.760</strong> req/dia → ~<strong>70% menos</strong> neste exemplo.</li>
+      </ul>
+      <p>
+        Se os 500 online seguem quase os mesmos @ que os 500 offline, <strong>U<sub>online</sub> ≈ U</strong> e a economia é pequena.
+        A redução é maior quando quem está offline seguia contas que <strong>ninguém online</strong> segue naquele momento.
+      </p>
+
+      <h3>Previsão diária (sync global só online)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Fórmula</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A cada 30 min</td>
+            <td><strong>U<sub>online</sub></strong> (reavaliado a cada tick do cron)</td>
+          </tr>
+          <tr>
+            <td>Por dia (média estável)</td>
+            <td><strong>U<sub>online,avg</sub> × 48</strong></td>
+          </tr>
+          <tr>
+            <td>Custo/dia (US$ 0,00064/req)</td>
+            <td><strong>U<sub>online,avg</sub> × 48 × 0,00064</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>U<sub>online</sub></strong> muda a cada 30 min (usuário abre/fecha app). Para orçamento, use média observada
+        (ex. 25% dos MAU “online” em horário de pico → estimar <strong>U<sub>online,avg</sub> ≈ 0,4 × U</strong> se perfis seguidos forem parecidos).
+      </p>
+
+      <h3>É possível implementar?</h3>
+      <p><strong>Sim.</strong> Passos alinhados ao código atual:</p>
+      <ol>
+        <li>Cron <code>/api/cron/x-listening-sync</code> a cada 30 min.</li>
+        <li>Antes do loop, calcular lista de <code>target_profile_id</code> com query <strong>U<sub>online</sub></strong> (SQL acima).</li>
+        <li>Para cada perfil, <code>getLatestXPosts</code> uma vez + fan-out <code>importPostsAndQueueForListener</code> (igual admin).</li>
+        <li>Manter <code>source = cron_online</code> em <code>x_api_usage_events</code> para medir gasto real vs <strong>U</strong>.</li>
+        <li><strong>Desligar</strong> sync automático no browser para não duplicar cobrança.</li>
+      </ol>
+
+      <h3>Trade-offs (produto)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Benefício</th>
+            <th>Custo / risco</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>API X cai quando pouca gente está no app</td>
+            <td>Ouvinte <strong>offline</strong> pode não receber posts novos na fila até voltar (atraso &gt; 30 min ou vazio)</td>
+          </tr>
+          <tr>
+            <td>Previsão ligada a uso real (<strong>U<sub>online</sub></strong>)</td>
+            <td>Precisa definir janela (2 min vs 30 min) e heartbeat confiável (aba em background pode parar)</td>
+          </tr>
+          <tr>
+            <td>Ainda deduplica @ entre usuários online</td>
+            <td>No pico (todos online), <strong>U<sub>online</sub> → U</strong> — gasto igual ao global “sempre”</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Híbrido (opcional)</h3>
+      <ul>
+        <li><strong>A cada 30 min:</strong> sync só <strong>U<sub>online</sub></strong> (barato no dia a dia).</li>
+        <li><strong>1× por dia (ou 6h):</strong> sync completo <strong>U</strong> (catch-up para quem ficou offline).</li>
+        <li><strong>Ao abrir app / heartbeat:</strong> sync pontual dos perfis X daquele listener (UX imediata, poucos requests).</li>
+      </ul>
+
+      <h3>Resposta direta</h3>
+      <p>
+        <strong>Sim:</strong> sync global apenas para perfis com ouvintes online reduz o custo versus sync global “sempre”,
+        porque <strong>U<sub>online</sub> ≤ U</strong>. Com 1.000 usuários e 500 online, o gasto <strong>só cai se</strong> os 500 offline
+        não compartilharem os mesmos @ que os 500 online — senão <strong>U<sub>online</sub> ≈ U</strong>.
+        É <strong>possível</strong> com <code>last_seen_at</code> + cron deduplicado; combinar com catch-up ao login evita fila vazia para quem voltou.
+      </p>
+    </section>
+
+    <section id="politica-sync-escuta-implementada">
+      <h2>21. Política acordada — sync, planos e escuta (implementação iniciada)</h2>
+      <div class="callout ok">
+        <strong>Em vigor no código (Maio 2026):</strong> sync global <strong>só com ouvintes online</strong> via cron;
+        sync <strong>admin</strong> manual sem restrição de online; browser <strong>não</strong> dispara mais sync automático do X.
+      </div>
+
+      <h3>Duas formas de sync de perfis X customizados</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Canal</th>
+            <th>Quando</th>
+            <th>Escopo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Cron global</strong></td>
+            <td>A cada <strong>30 min</strong> (<code>POST /api/cron/x-listening-sync</code> + <code>CRON_SECRET</code>)</td>
+            <td>Perfis <code>external_x</code> em <code>want_to_hear</code> com ≥1 ouvinte <strong>online</strong> (<code>last_seen_at</code> na janela, padrão 30 min). <strong>1 API call por @ distinto</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Botão admin</strong></td>
+            <td>Quando o admin clicar (dashboard)</td>
+            <td><strong>Todos</strong> os <code>external_x</code> seguidos na plataforma — <strong>sem</strong> filtro online. Uso livre para operação/suporte.</td>
+          </tr>
+          <tr>
+            <td><strong>Browser</strong> (removido)</td>
+            <td>—</td>
+            <td>Sync automático 10/30 min no cliente <strong>desligado</strong> — evita duplicar custo com o cron.</td>
+          </tr>
+          <tr>
+            <td><strong>Adicionar @</strong> / Sync now (usuário)</td>
+            <td>Ação manual do usuário pago</td>
+            <td>+2 requests ao adicionar; “Sync now” só percorre os X que o usuário segue (plano pago).</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>@_Qubic_</strong> no X: ingest do canal oficial via cron <code>/api/cron/qubic-x-ingest</code> (fora do loop acima).
+        Free pode seguir <strong>@qubic</strong> (perfil curator) sem slot pago.
+      </p>
+
+      <h3>Quem pode seguir / sincronizar X customizado</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Plano</th>
+            <th>Contas X custom (<code>external_x</code>)</th>
+            <th>Sync cron (custom)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Free</strong></td>
+            <td><strong>0</strong> — só @qubic oficial + nativos</td>
+            <td>Não entra em <code>want_to_hear</code> como X custom; Qubic via ingest dedicado</td>
+          </tr>
+          <tr>
+            <td><strong>Starter</strong></td>
+            <td><strong>3</strong></td>
+            <td>Sim, se ouvinte online (cron) ou admin</td>
+          </tr>
+          <tr>
+            <td><strong>Popular</strong></td>
+            <td><strong>5</strong></td>
+            <td>Idem</td>
+          </tr>
+          <tr>
+            <td><strong>Pro</strong></td>
+            <td><strong>15</strong></td>
+            <td>Idem</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Quem pode <em>ouvir</em> Audiopost (reprodutor)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Origem do conteúdo</th>
+            <th>Free</th>
+            <th>Starter+</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Perfis nativos EchonX</strong></td>
+            <td><strong>Sim</strong></td>
+            <td><strong>Sim</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Canal oficial @qubic / curator</strong></td>
+            <td><strong>Sim</strong></td>
+            <td><strong>Sim</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Outros perfis X (espelho <code>external_x</code>)</strong></td>
+            <td><strong>Não</strong> — upgrade</td>
+            <td><strong>Sim</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Enforcement: <code>/api/listening/queue</code> filtra posts de autores X billable para Free;
+        <code>ListenButton</code> desabilitado em páginas de perfil; trava ao seguir/adicionar X em server actions.
+      </p>
+
+      <h3 id="redirect-billing-sem-plano">UX — Free tenta adicionar X → redireciona para billing</h3>
+      <div class="callout">
+        <strong>Comportamento (Maio 2026):</strong> se o usuário está no <strong>Free</strong> e tenta adicionar um @ externo
+        (Audiopost → “Add profile”) ou <strong>seguir</strong> um perfil <code>external_x</code> sem plano pago, o app
+        <strong>não mostra só o aviso vermelho</strong> — redireciona imediatamente para
+        <code>/app/settings/billing</code>.
+        <strong>Exceção:</strong> utilizador com <code>profiles.role = admin</code> pode adicionar perfis X custom
+        <strong>sem assinatura</strong> (slots ilimitados no código). Ver <a href="#audiopost-voz-fila-maio-2026">§28</a>.
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ação</th>
+            <th>URL de destino</th>
+            <th>Banner na página</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Formulário “Add profile” (@ elonmusk, etc.)</td>
+            <td><code>/app/settings/billing?plan=starter&amp;from=x_profile</code></td>
+            <td>Explica que X externo exige plano pago; Free mantém @qubic + nativos</td>
+          </tr>
+          <tr>
+            <td>Botão Follow em perfil X</td>
+            <td><code>/app/settings/billing?plan=starter&amp;from=follow</code></td>
+            <td>“Following this X profile requires a paid plan”</td>
+          </tr>
+          <tr>
+            <td>Limite de slots (já tem plano, mas cheio)</td>
+            <td><code>?plan=popular</code> ou <code>pro</code> + <code>from=follow</code></td>
+            <td>Sugestão do tier seguinte</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Fluxo resumido:</strong></p>
+      <ol>
+        <li>Server action retorna <code>code: PLAN_LIMIT</code> + <code>upgradeUrl</code> (sem chamar API do X no Free para @ custom).</li>
+        <li>Cliente (<code>x-profile-listening-form</code>, <code>want-to-hear-button</code>) faz <code>router.push(upgradeUrl)</code>.</li>
+        <li>Usuário vê planos Starter / Popular / Pro (checkout Stripe em fase posterior).</li>
+      </ol>
+      <p>
+        <strong>@_Qubic_</strong> no formulário continua funcionando no Free (canal oficial, sem redirect).
+      </p>
+
+      <h3>Arquivos principais</h3>
+      <ul>
+        <li><code>src/lib/x/sync-listening.ts</code> — dedup + cron online + admin</li>
+        <li><code>src/app/api/cron/x-listening-sync/route.ts</code></li>
+        <li><code>src/lib/billing/entitlements.ts</code> — limites, admin bypass add X, <code>canListenToAudiopostAuthorWithPlan</code></li>
+        <li><code>src/lib/plans.ts</code> — 0 / 3 / 5 / 15</li>
+        <li><code>src/components/listen/listen-queue-provider.tsx</code> — heartbeat mantido; sync browser removido</li>
+        <li><code>src/components/app/x-profile-listening-form.tsx</code> — redirect billing em <code>PLAN_LIMIT</code></li>
+        <li><code>src/components/profile/want-to-hear-button.tsx</code> — idem ao Follow</li>
+        <li><code>src/app/app/settings/billing/page.tsx</code> — banners <code>from=x_profile</code> / <code>from=follow</code></li>
+        <li><code>vercel.json</code> — cron <code>*/30 * * * *</code></li>
+      </ul>
+
+      <h3>Variáveis de ambiente</h3>
+      <ul>
+        <li><code>CRON_SECRET</code> — obrigatório para o cron de listening X</li>
+        <li><code>X_SYNC_ONLINE_WINDOW_MINUTES</code> — opcional (padrão 30)</li>
+      </ul>
+
+      <h3>Previsão de custo (cron online)</h3>
+      <p>
+        <strong>requests/dia ≈ U<sub>online</sub> × 48</strong> — ver §19–20. Heartbeat (~60s) mantém <code>last_seen_at</code> enquanto o usuário usa o app com Audiopost.
+      </p>
+    </section>
+
+    <section id="pagina-billing-conversao">
+      <h2>22. Página Settings / Billing — layout de alta conversão</h2>
+      <div class="callout ok">
+        <strong>URL:</strong> <code>/app/settings/billing</code> (e <code>/app/settings</code> redireciona para billing).
+        Layout inspirado no modelo visual de conversão (hero, uso, planos, tabela, FAQ, CTA final).
+      </div>
+
+      <h3>Estrutura da página (topo → rodapé)</h3>
+      <ol>
+        <li><strong>Hero</strong> — breadcrumb Settings / Billing; título “Plans that scale <em>with your voice</em>”; subtítulo Stripe + cancel anytime; três bullets ( @qubic + nativos, planos pagos para X custom, Stripe ); visual cartão/waveform à direita.</li>
+        <li><strong>Your usage</strong> — plano ativo, external X count, nota Free (@qubic + nativos).</li>
+        <li><strong>Alerta de upgrade</strong> — exibido quando <code>from=x_profile</code> ou <code>from=follow</code> (redirect após tentar adicionar X no Free).</li>
+        <li><strong>Toggle Pay monthly / Pay yearly</strong> — badge “Save up to 20%”; preços anuais ≈ −20% no valor mensal exibido.</li>
+        <li><strong>Audiopost cards</strong> — Starter $9, Popular $19, Pro $39; checkout <code>POST /api/billing/checkout</code> quando Stripe configurado.</li>
+        <li><strong>Library Premium</strong> — secção separada <code>#library-premium</code>: Library Starter $9, Popular $17, Pro $29; checkout <code>POST /api/billing/library/checkout</code> · regras §30.</li>
+        <li><strong>Garantia</strong> — “7-day money-back guarantee. Cancel anytime.”</li>
+        <li><strong>Tabela comparativa</strong> — “Find the plan that fits you” (8 linhas de features).</li>
+        <li><strong>FAQ</strong> — acordeão com 4 perguntas.</li>
+        <li><strong>Footer CTA</strong> — Questions? + Ready to upgrade + botão “Choose your plan” (scroll para cards).</li>
+      </ol>
+
+      <h3>Limites exibidos nos planos (código)</h3>
+      <table>
+        <thead>
+          <tr><th>Plano</th><th>Preço/mês</th><th>External X</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Free</td><td>US$0</td><td>0 (só @qubic + nativos)</td></tr>
+          <tr><td>Starter</td><td>US$9</td><td>3</td></tr>
+          <tr><td>Popular</td><td>US$19</td><td>5</td></tr>
+          <tr><td>Pro</td><td>US$39</td><td>15</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Stripe (Maio 2026 — implementado)</h3>
+      <ul>
+        <li>Audiopost: webhook grava <code>subscriptions</code> · Library: <code>library_subscriptions</code> + quota — ver <a href="#stripe-library-billing-maio-2026">§30</a></li>
+        <li><code>Manage subscription</code> → <code>POST /api/billing/portal</code> (cliente Stripe Audiopost)</li>
+        <li>Docs: <code>docs/STRIPE-SETUP.md</code></li>
+      </ul>
+
+      <h3>Arquivos no repositório</h3>
+      <ul>
+        <li><code>src/components/settings/billing-conversion-page.tsx</code> — UI completa (client)</li>
+        <li><code>src/app/app/settings/billing/page.tsx</code> — dados do servidor (usage, redirect params)</li>
+        <li><code>src/app/app/settings/page.tsx</code> — redirect → billing</li>
+        <li><code>src/app/app/settings/layout.tsx</code> — largura máx. ~1200px</li>
+        <li><code>src/lib/billing/plan-comparison.ts</code> — tabela + FAQ</li>
+      </ul>
+
+      <h3>Conversão e redirect (§21)</h3>
+      <p>
+        Free que tenta “Add profile” com @ externo → <code>router.push(/app/settings/billing?plan=starter&amp;from=x_profile)</code>
+        → vê hero + alerta + cards. Checkout Stripe ativo quando <code>STRIPE_PRICE_*</code> e webhook estão configurados.
+        Library esgotada → <code>?library=library-popular#library-premium</code> (§30).
+      </p>
+    </section>
+
+    <section id="pagina-about-marketing">
+      <h2>23. Página About EchonX — marketing (layout do mock)</h2>
+      <div class="callout ok">
+        <strong>URL:</strong> <code>/about</code> · rota em <code>src/app/(marketing)/about/page.tsx</code>.
+        Página pública refeita para seguir o mock visual “About EchonX” (dark, acento cyan, seções de topo a rodapé).
+      </div>
+
+      <h3>Objetivo e tom de copy</h3>
+      <ul>
+        <li>Comunicar produto (escuta social, perfil-first, voz) sem expor stack de infraestrutura nem nomes de fornecedores de pagamento/API.</li>
+        <li>Textos em inglês na UI (alinhado ao mock); i18n do header/footer continua via dicionário onde aplicável.</li>
+        <li>“X” no hero refere-se à rede social / perfil de origem do criador — não a APIs ou SDKs de terceiros.</li>
+      </ul>
+
+      <h3>Estrutura da página (topo → rodapé)</h3>
+      <ol>
+        <li><strong>Hero</strong> — eyebrow “About EchonX”; título “Every voice starts on <em>X</em>.”; parágrafo de posicionamento; quatro bullets (US-first team, Privacy by design, Real-time listening, Creators &amp; communities); coluna direita com <code>HeroSignalVisual</code> (órbita de avatares + X + waveform).</li>
+        <li><strong>Our mission</strong> — card largo em duas colunas: headline de missão + texto “depth beats distraction”.</li>
+        <li><strong>How EchonX works</strong> — título “Built for effortless connection.”; quatro passos horizontais com conectores tracejados: You speak → We listen → People connect → Communities grow.</li>
+        <li><strong>Safe. Secure. Respectful.</strong> — “Your voice is protected.”; moderação em upload + controles do criador; visual de escudo (card) à direita.</li>
+        <li><strong>Stats</strong> — “Real people. Real conversations.”; métricas de marketing: 100K+ listeners, 2.5M+ posts queued, 99.9% moderation, 4.8/5 satisfaction.</li>
+        <li><strong>Testimonials</strong> — três cards; card central com borda/anel cyan (destaque); pontos de paginação decorativos abaixo.</li>
+        <li><strong>In the press</strong> — nomes em texto (TechCrunch, The Verge, Forbes, Fast Company, Wired) — placeholders visuais, sem assets de logo.</li>
+        <li><strong>CTA</strong> — “Your voice belongs here.”; botões <code>Open EchonX</code> → <code>/app/explore</code> e <code>Sign in</code> → <code>/login?callbackUrl=%2Fapp%2Fexplore</code>; glow radial de fundo.</li>
+      </ol>
+
+      <h3>Header e footer (marketing global)</h3>
+      <table>
+        <thead>
+          <tr><th>Componente</th><th>Alteração</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>SiteHeader</code></td>
+            <td>Links Pricing / About / FAQ com <strong>sublinhado cyan</strong> no item ativo (<code>border-primary</code> por <code>pathname</code>).</td>
+          </tr>
+          <tr>
+            <td><code>SiteFooter</code></td>
+            <td>Footer em 5 colunas (logo + descrição, Product, Company, Resources, Follow us) + barra legal inferior. <strong>Removido</strong> link “X API” e menções a infra de terceiros.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Links do footer (§23)</h3>
+      <table>
+        <thead>
+          <tr><th>Coluna</th><th>Itens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Product</td>
+            <td>Explore (<code>/app/explore</code>), Audiopost (<code>/app</code>), Profile (<code>/app/onboarding</code>), Pricing (<code>/pricing</code>)</td>
+          </tr>
+          <tr>
+            <td>Company</td>
+            <td>About, Privacy, Terms, Careers (<code>#careers</code> placeholder)</td>
+          </tr>
+          <tr>
+            <td>Resources</td>
+            <td>FAQ, Blog (<code>#blog</code>), Support (→ FAQ)</td>
+          </tr>
+          <tr>
+            <td>Follow us</td>
+            <td>Ícones texto (X, IG, YT, TT) — URLs genéricas externas até haver perfis oficiais</td>
+          </tr>
+          <tr>
+            <td>Legal (rodapé)</td>
+            <td>Privacy, Terms, Status (→ <code>/about</code> placeholder)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Arquivos no repositório</h3>
+      <ul>
+        <li><code>src/components/marketing/about-page-content.tsx</code> — todas as seções da About</li>
+        <li><code>src/app/(marketing)/about/page.tsx</code> — metadata + render</li>
+        <li><code>src/components/marketing/hero-signal-visual.tsx</code> — reutilizado no hero (já usado na home)</li>
+        <li><code>src/components/marketing/site-header.tsx</code> — nav ativa com underline</li>
+        <li><code>src/components/marketing/site-footer.tsx</code> — footer multi-coluna</li>
+        <li><code>src/app/app/(audiopost)/layout.tsx</code> — shell lateral</li>
+        <li><code>src/app/app/(standard)/layout.tsx</code> — header clássico</li>
+      </ul>
+
+      <h3>O que não entra na copy pública (decisão de produto)</h3>
+      <ul>
+        <li>Sem Stripe, Supabase, Vercel, cron secrets, PostgREST, etc. na página About.</li>
+        <li>Sem “X API” / documentação de integração no footer marketing — isso permanece em docs internos (§§15–21 deste HTML).</li>
+        <li>Estatísticas e logos de imprensa são <strong>placeholders de marketing</strong> até haver dados/parcerias reais.</li>
+      </ul>
+
+      <h3>Relação com outras páginas</h3>
+      <p>
+        About é conversão de marca; billing (§22) é conversão de plano. Ambas usam o mesmo <code>SiteHeader</code>/<code>SiteFooter</code> do grupo <code>(marketing)</code>.
+        Perfil público <code>/u/[username]</code> oculta o header marketing (comportamento já existente).
+      </p>
+    </section>
+
+    <section id="layout-audiopost-dashboard">
+      <h2>24. Layout Audiopost — sidebar, dashboard e players (Maio 2026)</h2>
+      <div class="callout ok">
+        <strong>Checkpoint de reversão:</strong> <code>docs/layout-restore-checkpoint.md</code> lista ficheiros e passos para restaurar o layout anterior.
+        Alteração <strong>só de UI/UX</strong> — fila, billing, sync X, APIs e <code>voice-session</code> inalterados.
+      </div>
+
+      <h3>Shell lateral — <strong>só</strong> em <code>/app</code> (Audiopost)</h3>
+      <ul>
+        <li>Route groups: <code>(audiopost)/layout.tsx</code> → <code>AppShell</code> + sidebar; <code>(standard)/layout.tsx</code> → <code>AppShellHeader</code> + <code>AppNav</code> no topo (Explore, Settings, Discover, Onboarding).</li>
+        <li><code>AppSidebar</code> — nav vertical (13px, <code>font-normal</code>), largura <code>232px</code> / <code>68px</code> recolhida, slot futuro <code>#sidebar-credits-slot</code>, collapse. Removido bloco “Your queue / Add profile” (Maio 2026).</li>
+        <li>Logo row <code>h-16</code> alinhada ao <code>AppTopBar</code>; borda inferior da sidebar alinhada à <code>LibraryBottomBar</code> (checkpoint em <code>docs/layout-restore-checkpoint.md</code>).</li>
+        <li><code>AppTopBar</code> — pesquisa, idioma, avatar (apenas Audiopost).</li>
+        <li>Demais rotas <code>/app/explore</code>, <code>/app/settings</code>, etc. mantêm layout clássico centrado <code>max-w-6xl</code>.</li>
+      </ul>
+
+      <h3>Página <code>/app</code> (Audiopost) — grelha do mock</h3>
+      <table>
+        <thead>
+          <tr><th>Zona</th><th>Componente</th><th>Função</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Topo esquerda</td>
+            <td><code>AudiopostNowPlayingShell</code></td>
+            <td>Reprodutor da <strong>fila de audiopost</strong> fixo; <code>FloatingListenPlayer variant="embedded"</code>. Botão Expand/Fold: expandido sobrepõe a Library (<code>z-30</code>); recolhido encaixa no card.</td>
+          </tr>
+          <tr>
+            <td>Topo direita</td>
+            <td><code>AudiopostListeningMapCard</code></td>
+            <td>Métricas visuais (placeholder de produto: horas, gráfico semanal, meta 73%).</td>
+          </tr>
+          <tr>
+            <td>Base esquerda</td>
+            <td><code>AudiopostLibrarySection</code></td>
+            <td>Tabs Recommended, Economy, Technology, Business, Philosophy, Crypto; catálogo Gutenberg (30 ebooks únicos) + mocks em Recommended; pesquisa com lupa no rodapé do card — ver §26.</td>
+          </tr>
+          <tr>
+            <td>Base centro</td>
+            <td><code>AudiopostXProfilesPanel</code></td>
+            <td>Lista <code>getFollowedProfiles</code> + formulário <code>addXProfileToListening</code> (mesma action; redirect billing em PLAN_LIMIT).</td>
+          </tr>
+          <tr>
+            <td>Base direita</td>
+            <td><code>AudiopostPdfUploadPanel</code></td>
+            <td>Dropzone + uploads recentes (UI); ficheiro → <code>PdfReadingPlayer.loadFile</code>.</td>
+          </tr>
+          <tr>
+            <td>Barra inferior fixa</td>
+            <td><code>LibraryBottomBar</code></td>
+            <td>Controla <strong>biblioteca/PDF</strong> via <code>PdfReadingPlayer</code> headless + <code>AudiopostLibraryProvider</code>. Offset <code>left: var(--app-sidebar-width)</code>; <code>bottom: 8px</code> (lift) — ver §26.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Comportamento dos dois reprodutores</h3>
+      <ul>
+        <li><strong>Now Playing (card):</strong> apenas em <code>pathname === "/app"</code>; sem FAB nem portal flutuante.</li>
+        <li><strong>Explore, Settings, Discover, etc.:</strong> <code>ListenQueueProvider</code> mantém FAB + <code>FloatingListenPlayer</code> flutuante (navegação livre).</li>
+        <li><strong>Barra inferior:</strong> só em <code>/app</code>; não substitui o player da fila — só livros/PDF da biblioteca.</li>
+        <li><code>claimVoicePlayback</code> continua a alternar <code>queue-player</code> vs <code>pdf-reader</code> (um de cada vez).</li>
+      </ul>
+
+      <h3>Arquivos principais</h3>
+      <ul>
+        <li><code>src/app/app/layout.tsx</code> — <code>AppShell</code></li>
+        <li><code>src/app/app/page.tsx</code> — <code>AudiopostDashboard</code></li>
+        <li><code>src/components/app/audiopost-dashboard.tsx</code></li>
+        <li><code>src/components/listen/listen-queue-provider.tsx</code> — <code>useFloatingPlayer = showAudiopostControl &amp;&amp; !isAudiopostHome</code></li>
+        <li><code>src/components/listen/floating-listen-player.tsx</code> — <code>variant="embedded"</code></li>
+        <li><code>src/components/app/pdf-reading-player.tsx</code> — <code>headless</code> + <code>forwardRef</code> para a barra inferior</li>
+        <li><code>src/contexts/audiopost-library-context.tsx</code></li>
+      </ul>
+
+      <h3>Dev — badge vermelho “1 Issue” (canto inferior esquerdo)</h3>
+      <p>
+        Em <code>npm run dev</code>, esse pill <strong>não é UI do EchonX</strong> — é o indicador do
+        <strong>Next.js Dev Tools</strong> (erro de runtime React ou aviso ESLint no browser). Clique no badge para ver a mensagem exacta.
+      </p>
+      <ul>
+        <li><strong>Causa corrigida (Maio 2026):</strong> loop de re-render entre <code>PdfReadingPlayer</code> (headless) e <code>AudiopostLibraryProvider</code> — <code>setPlayback</code> instável + <code>useEffect</code> com <code>onPlaybackUpdate</code> nas deps gerava “Maximum update depth” / Issue contínuo. Fix: <code>useCallback</code> + comparação shallow em <code>setPlayback</code>; callback via <code>ref</code> no efeito.</li>
+        <li><strong>PDF worker (Maio 2026):</strong> não usar <code>import.meta.url</code> em <code>pdf-reading-player.tsx</code>; worker em <code>/public/pdf.worker.min.mjs</code> via <code>scripts/copy-pdf-worker.js</code>.</li>
+        <li><strong>Outros avisos comuns em dev:</strong> <code>@next/next/no-img-element</code> em capas da Library (eslint-disable local) ou imagens Gutenberg bloqueadas (domínio adicionado em <code>next.config.ts</code>).</li>
+        <li><strong>Produção:</strong> o badge não aparece em <code>npm run build && npm start</code>.</li>
+      </ul>
+    </section>
+
+    <section id="funcionalidades-estaveis-maio-2026">
+      <h2>26. Funcionalidades estáveis — Maio 2026 (mantidas em produção)</h2>
+      <div class="callout ok">
+        <strong>Âmbito desta secção:</strong> apenas o que foi implementado, testado sem erro regressivo e <strong>mantido</strong> no código.
+        Não inclui experimentos revertidos nem trabalho de responsivo mobile (adiado).
+      </div>
+
+      <h3 id="library-gutenberg">26.1 Biblioteca Recommended Reading (Gutenberg)</h3>
+      <ul>
+        <li><strong>Tabs:</strong> Recommended (mocks + recomendação fixa), Economy, Technology, Business, Philosophy, Crypto.</li>
+        <li><strong>Catálogo local:</strong> <code>src/lib/audiopost/gutenberg-library.ts</code> — 30 ebooks únicos (6 por categoria); URLs <code>/cache/epub/{id}/pg{id}.txt</code> e capas no domínio Gutenberg (<code>next.config.ts</code>).</li>
+        <li><strong>Pesquisa:</strong> ícone lupa no rodapé do card; ao pesquisar oculta o catálogo por tab; “Cancel” restaura a lista.</li>
+        <li><strong>API:</strong> <code>GET /api/recommended-reading/search?q=</code> — prioridade catálogo local; fallback Gutendex com timeout curto (~6s) para evitar bloqueio (ex.: “dracula”).</li>
+        <li><strong>UI:</strong> <code>src/components/app/audiopost-library-section.tsx</code>.</li>
+      </ul>
+
+      <h3 id="sidebar-refinada">26.2 Sidebar Audiopost — refinamento e alinhamento</h3>
+      <ul>
+        <li>Removidos “Your queue”, “Queue empty” e “+ Add profile” da sidebar (fila continua no Now Playing / player embutido).</li>
+        <li>Reservado <code>#sidebar-credits-slot</code> para saldo de créditos (vazio até integração billing).</li>
+        <li>Tipografia menu: <code>text-[13px] font-normal</code>; larguras em <code>app-sidebar-layout.ts</code> (232 / 68 px).</li>
+        <li>Checkpoint reversão: <code>docs/layout-restore-checkpoint.md</code> (sidebar + barra inferior).</li>
+      </ul>
+
+      <h3 id="bottom-bar-lift">26.3 Barra inferior — afastamento da margem do SO</h3>
+      <p>
+        O botão Play encostava à barra de tarefas do sistema. Constantes em
+        <code>src/components/app/audiopost-bottom-bar-layout.ts</code>:
+        <code>AUDIOPOST_BOTTOM_BAR_LIFT_PX = 8</code>, altura 72px;
+        <code>audiopost-dashboard.tsx</code> reserva <code>80px</code> no fundo da grelha.
+      </p>
+
+      <h3 id="x-profile-form-fix">26.4 Perfis X — correção do formulário “Add profile”</h3>
+      <p>
+        Ao adicionar perfis como <code>@_qubic_</code>, o submit async desmontava o formulário antes de
+        <code>e.currentTarget.reset()</code>, gerando <code>Cannot read properties of null (reading 'reset')</code>.
+        <strong>Fix mantido:</strong> capturar <code>const form = e.currentTarget</code> antes do await e chamar <code>form.reset()</code> antes de atualizar estado que desmonta o form
+        (<code>audiopost-x-profiles-panel.tsx</code>).
+      </p>
+
+      <h3 id="tema-lumos-dark">26.5 Tema Lumos / Dark (preferência por utilizador)</h3>
+      <ul>
+        <li>Toggle Lumos | Dark no cartão de edição de perfil (<code>ThemeModeToggle</code> em <code>profile-edit-form.tsx</code>).</li>
+        <li>Preferência guardada por conta: <code>localStorage</code> chave <code>echonx-theme:{userId}</code> (migra chave legada <code>echonx-theme</code>).</li>
+        <li><strong>Não é global no servidor</strong> — cada browser/conta tem a sua preferência; outro utilizador noutro dispositivo não é afetado.</li>
+        <li><strong>Site marketing</strong> (<code>/</code>, <code>/pricing</code>, <code>/explore</code>, <code>/u/…</code>, etc.): utilizador comum <strong>sempre Dark</strong>; só <code>role=admin</code> pode ver Lumos no site público.</li>
+        <li><strong>Audiopost</strong> (<code>/app</code>): sempre Dark (<code>audiopostDark</code> em <code>AppShell</code>), independentemente da preferência Lumos noutras áreas.</li>
+        <li>Ficheiros: <code>src/lib/theme/echonx-theme.ts</code>, <code>echonx-theme-provider.tsx</code>, <code>echonx-theme-script.tsx</code>, <code>globals.css</code>, <code>src/app/layout.tsx</code> (<code>data-user-id</code>, <code>data-is-admin</code> no <code>&lt;html&gt;</code>).</li>
+      </ul>
+
+      <h3 id="admin-dev-lab">26.6 Admin Development Lab</h3>
+      <ul>
+        <li>Rotas admin-only: <code>/admin/lab</code> (índice), <code>/admin/lab/voice</code> (cópia do player de fila em modo embutido).</li>
+        <li>Registo: <code>src/lib/admin/dev-lab-registry.ts</code>; componente <code>voice-dev-lab.tsx</code>.</li>
+        <li><strong>Isolamento de produto:</strong> alterações no lab não mudam <code>/app</code> automaticamente; merge manual após validação.</li>
+        <li>Doc: <code>docs/admin-dev-lab.md</code>.</li>
+      </ul>
+
+      <h3 id="header-simplificado">26.7 Header app — simplificação</h3>
+      <p>
+        Removida a linha “Signed in as @… · Audio ready” do <code>AppShellHeader</code> nas rotas que o usam
+        (Explore, Settings, Profile, etc.) — menos ruído visual; sessão continua visível no avatar/menu.
+      </p>
+
+      <h3>Mapa rápido de ficheiros (§26)</h3>
+      <table>
+        <thead>
+          <tr><th>Área</th><th>Caminhos principais</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Biblioteca + busca</td><td><code>audiopost-library-section.tsx</code>, <code>gutenberg-library.ts</code>, <code>api/recommended-reading/search</code>, <code>gutendex-search.ts</code></td></tr>
+          <tr><td>Layout / sidebar / barra</td><td><code>app-sidebar.tsx</code>, <code>app-sidebar-layout.ts</code>, <code>library-bottom-bar.tsx</code>, <code>audiopost-bottom-bar-layout.ts</code></td></tr>
+          <tr><td>Perfis X</td><td><code>audiopost-x-profiles-panel.tsx</code></td></tr>
+          <tr><td>Tema</td><td><code>src/lib/theme/</code>, <code>src/components/theme/</code></td></tr>
+          <tr><td>Admin lab</td><td><code>src/app/admin/lab/</code>, <code>src/components/admin/lab/</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="precificacao-voz-2026">
+      <h2>27. Precificação voz — Audiopost vs Biblioteca (Maio 2026)</h2>
+      <div class="callout ok">
+        <strong>Decisão de produto:</strong> <strong>Audiopost (fila)</strong> e <strong>Biblioteca</strong> têm motores e quotas <strong>separados</strong>.
+        Free usa <strong>Web Speech</strong> (browser). Pagantes / add-ons usam <strong>Fish Audio S2 Pro</strong> via API (sem GPU no cliente).
+        Sandbox: <code>/admin/lab/voice</code> — testar Fish antes de produção.
+      </div>
+
+      <h3>Assinaturas — fila Audiopost (não incluem Biblioteca Premium)</h3>
+      <table>
+        <thead>
+          <tr><th>Plano</th><th>US$/mês</th><th>Fila / Now Playing</th><th>Biblioteca (base)</th><th>Perfis X custom</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Free</strong></td>
+            <td>0</td>
+            <td>Web Speech</td>
+            <td>Web Speech</td>
+            <td>0 — só @qubic + nativos EchonX</td>
+          </tr>
+          <tr>
+            <td><strong>Starter</strong></td>
+            <td><strong>9</strong></td>
+            <td><strong>Fish S2 Pro</strong></td>
+            <td>Web Speech</td>
+            <td>até 3</td>
+          </tr>
+          <tr>
+            <td><strong>Popular</strong></td>
+            <td><strong>19</strong></td>
+            <td><strong>Fish S2 Pro</strong></td>
+            <td>Web Speech</td>
+            <td>até 5</td>
+          </tr>
+          <tr>
+            <td><strong>Pro</strong></td>
+            <td><strong>39</strong></td>
+            <td><strong>Fish S2 Pro</strong></td>
+            <td>Web Speech</td>
+            <td>até 15</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Limites X: <code>src/lib/plans.ts</code> · enforcement: <code>entitlements.ts</code>
+        (<code>canAddCustomExternalXAccountsForUser</code>, bypass admin — §28).
+        Custo Fish fila (ordem de grandeza): ~<strong>US$ 0,0033</strong> por play (~220 chars).
+        <strong>Cache de áudio TTS:</strong> planeado (§27 biblioteca + fila); <strong>ainda não implementado</strong> — cada play Fish no lab gera nova chamada API até haver cache por hash.
+      </p>
+
+      <h3 id="library-premium-planos">Produto separado — Library Premium (3 tiers)</h3>
+      <div class="callout ok">
+        <strong>Regras de produto confirmadas (Maio 2026):</strong> ver secção completa
+        <a href="#stripe-library-billing-maio-2026">§30 — Stripe, quota, upgrade, downgrade e bloqueio</a>.
+        <strong>Sem recargas</strong> no mesmo plano — só <strong>upgrade</strong> de tier ou <strong>esperar renovação</strong> (Pro).
+      </div>
+      <table>
+        <thead>
+          <tr><th>Plano Library</th><th>US$/mês</th><th>Voz Fish</th><th>Quota UTF-8 / ciclo</th><th>~tempo narrado*</th><th>Quota esgotada</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Free</strong> (todos)</td>
+            <td>0</td>
+            <td>—</td>
+            <td><strong>Ilimitado</strong> (Web Speech)</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Library Starter</strong></td>
+            <td>9</td>
+            <td>Fish S2 Pro</td>
+            <td>300.000</td>
+            <td>~5 h</td>
+            <td>Upgrade → <strong>Popular</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Library Popular</strong></td>
+            <td>17</td>
+            <td>Fish S2 Pro</td>
+            <td>600.000</td>
+            <td>~10 h</td>
+            <td>Upgrade → <strong>Pro</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Library Pro</strong></td>
+            <td>29</td>
+            <td>Fish S2 Pro</td>
+            <td>1.200.000</td>
+            <td>~20 h</td>
+            <td><strong>Sem horas extra</strong> — aguardar renovação Stripe</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        *Estimativa ~1.000 caracteres UTF-8 ≈ 1 minuto de narração (copy nos cards de billing).
+        Contador: cada segmento enviado a <code>POST /api/library/tts</code> debita bytes via
+        <code>increment_library_bytes_consumed</code> (migração <code>00022</code>).
+        <strong>Não há pacotes de recarga</strong> — política em <code>library-quota-policy.ts</code>.
+      </p>
+
+      <h3>API Fish (integração)</h3>
+      <ul>
+        <li>Modelo: header <code>model: s2-pro</code> · endpoint <code>POST https://api.fish.audio/v1/tts</code></li>
+        <li>Lab (admin): <code>POST /api/admin/lab/tts</code> — proxy; chave só no servidor (<code>FISH_AUDIO_API_KEY</code>)</li>
+        <li>Vozes opcionais: <code>FISH_AUDIO_REFERENCE_ID_EN</code>, <code>FISH_AUDIO_REFERENCE_ID_PT_BR</code>, …</li>
+        <li>Produção Audiopost: Fish <strong>só assinantes</strong> (Starter+) em <code>/api/listening/tts</code> · Free = Web Speech · Lab admin = <code>/api/admin/lab/tts</code></li>
+        <li>Produção Library: Fish em <code>GET/POST /api/library/tts</code> · quota + bloqueio §30 · Free = Web Speech ilimitado</li>
+      </ul>
+
+      <h3>Custo variável — cenário 10k users (8% pagantes fila, 2,5% Premium bib.)</h3>
+      <table>
+        <thead>
+          <tr><th>Linha</th><th>Receita/mês (ordem)</th><th>Custo/mês (ordem)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Fila (800 × mix 9/19/39)</td><td>~US$ 13.600</td><td>Fish ~US$ 700 · X API ~US$ 230</td></tr>
+          <tr><td>Biblioteca Premium (250 × US$ 9)</td><td>~US$ 2.250</td><td>Fish ~US$ 400</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>~US$ 15.850</strong></td><td><strong>~US$ 2.000</strong> (+ Stripe)</td></tr>
+        </tbody>
+      </table>
+      <p>Margem bruta realista ~<strong>85–87%</strong>. Stress (20% pagantes, quota 300k esgotada): ainda viável se recarga = US$ 9 / +300k.</p>
+
+      <h3>API X (posts) — independente da voz</h3>
+      <p>
+        Sync global ~30 min · custo ~<strong>US$ 0,92 × U</strong> (perfis X <strong>únicos</strong> seguidos).
+        Free sem X custom → U baixo. Ver §18–19.
+      </p>
+
+      <h3>Implementação (roadmap código)</h3>
+      <ol>
+        <li><strong>Feito:</strong> lab Fish · Audiopost Fish (<code>/api/listening/tts</code>) · Library Fish + quota (<code>/api/library/tts</code>, §30) · Stripe Audiopost + Library checkout/webhook · fila consumida (§28)</li>
+        <li><strong>Próximo:</strong> cache MP3 por hash (fila + biblioteca) · Price IDs Library no Stripe produção</li>
+      </ol>
+      <p>Detalhe técnico Stripe, upgrade/downgrade e bloqueio: <a href="#stripe-library-billing-maio-2026">§30</a>.</p>
+    </section>
+
+    <section id="audiopost-voz-fila-maio-2026">
+      <h2>28. Audiopost — voz, fila e permissões admin (Maio 2026)</h2>
+      <div class="callout ok">
+        <strong>Implementado no código.</strong> Esta secção regista alterações de produto e engenharia após o sandbox
+        <code>/admin/lab/voice</code>, correções de fila/consumo e exceções para <code>role = admin</code>.
+        Migração: <code>00019_listening_queue_no_unconsume.sql</code>.
+      </div>
+
+      <h3>28.1 Intro dos posts espelhados (inglês EUA)</h3>
+      <ul>
+        <li>Produto US: corpo armazenado e lido com <strong>Post by {autor}: …</strong> (<code>en-US</code>), não <code>postou</code>.</li>
+        <li><code>buildMirroredXPostBody</code> na import/sync X · normalização em <code>/api/listening/queue</code> e no cliente.</li>
+        <li>Backfill admin: <code>POST /api/admin/lab/backfill-intros</code> — reescreve filas antigas com <code>postou</code>.</li>
+        <li>TTS lab: <code>prepareMirroredPostForSpeech</code> — não re-localiza intro para pt na rota Fish (evita voltar a “postou” na voz).</li>
+      </ul>
+
+      <h3>28.2 Português — só Brasil (pt-BR)</h3>
+      <p>
+        Detecção “Original” e voz Web Speech/Fish usam <strong>pt-BR</strong> para qualquer texto português.
+        Vozes <code>pt-PT</code> do browser são <strong>excluídas</strong>.
+        Código: <code>src/lib/voice/speech-locale.ts</code>, <code>voice-engine.ts</code>, <code>fish-audio.ts</code>.
+      </p>
+
+      <h3>28.3 Player — visor e contadores</h3>
+      <ul>
+        <li><code>nowPlayingItem</code> em <code>FloatingListenPlayer</code> — texto e @ do post acompanham a faixa em reprodução.</li>
+        <li><code>waiting</code> / <code>queued</code> usam <code>storedQueueItems</code> (pendentes na sessão), não o total bruto da API.</li>
+        <li>Lab: <code>labSandbox</code>, idioma default <strong>Original</strong>, admin ignora filtro de plano na queue API.</li>
+      </ul>
+
+      <h3 id="fila-consumida-bloqueio">28.4 Fila — bloqueio após ouvir (sem repetir / sem custo Fish duplicado)</h3>
+      <div class="callout">
+        <strong>Regra:</strong> um post <strong>já consumido</strong> não volta à fila automática em refresh da fila,
+        sync X (~30 min / botão sync) nem reimport dos ~10 tweets recentes por perfil.
+      </div>
+      <table>
+        <thead>
+          <tr><th>Evento</th><th>Comportamento</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ouvir até o fim (ou skip com consume)</td>
+            <td><code>consumeQueueRow</code> → <code>listening_queue.consumed_at</code> preenchido</td>
+          </tr>
+          <tr>
+            <td><code>GET /api/listening/queue</code> / refresh UI</td>
+            <td>Só linhas com <code>consumed_at IS NULL</code></td>
+          </tr>
+          <tr>
+            <td>Sync X (<code>sync-listening.ts</code>, <code>x-listening.ts</code>)</td>
+            <td><code>enqueueListeningPostsIfEligible</code> — ignora consumidos e <code>text_read_events</code>; <strong>não</strong> faz upsert com <code>consumed_at: null</code></td>
+          </tr>
+          <tr>
+            <td>Trigger DB (post novo)</td>
+            <td><code>ON CONFLICT DO NOTHING</code> — não reabre linha consumida</td>
+          </tr>
+          <tr>
+            <td>Trigger <code>00019</code></td>
+            <td><code>BEFORE UPDATE</code> impede limpar <code>consumed_at</code> se já estava setado</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Custo API Fish:</strong> sem cache de MP3 hoje — evitar <em>reenfileirar</em> o mesmo post é a proteção principal
+        contra TTS duplicado na fila. Replay manual (botão Listen) ainda pode gerar nova síntese até existir cache (§27).
+        O sync X continua a chamar a <strong>API do X</strong> por perfil; não reenfileira posts já ouvidos.
+      </p>
+
+      <h3>28.5 Admin — perfis X e lab</h3>
+      <table>
+        <thead>
+          <tr><th>Capacidade</th><th>Admin (<code>profiles.role = admin</code>)</th><th>Demais utilizadores</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Adicionar @ X custom (Audiopost / Follow)</td>
+            <td><strong>Sim</strong>, sem plano pago · slots ilimitados</td>
+            <td>Starter+ (Free só @qubic + nativos)</td>
+          </tr>
+          <tr>
+            <td>Ouvir fila X billable no lab</td>
+            <td><strong>Sim</strong> — <code>/api/listening/queue</code> ignora filtro de plano</td>
+            <td>Free bloqueado em autores <code>external_x</code> billable</td>
+          </tr>
+          <tr>
+            <td>Fish TTS no lab</td>
+            <td><code>/admin/lab/voice</code> → <code>/api/admin/lab/tts</code> (só testes)</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Fish TTS no reprodutor <code>/app</code></td>
+            <td><strong>Web Speech</strong> no player principal (igual Free), salvo assinatura paga no perfil</td>
+            <td><strong>Starter+</strong> → Fish via <code>POST /api/listening/tts</code> · <strong>Free</strong> → Web Speech</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Sessão: <code>auth.ts</code> lê <code>profiles.role</code>.
+        Enforcement: <code>canAddCustomExternalXAccountsForUser</code>,
+        <code>assertCanFollowExternalXProfile({ role })</code> em
+        <code>addXProfileToListening</code> e <code>toggleWantToHear</code>.
+        Promover admin: <code>UPDATE profiles SET role = 'admin'</code> (ver dashboard admin).
+      </p>
+
+      <h3>28.6 Ficheiros principais</h3>
+      <table>
+        <thead>
+          <tr><th>Área</th><th>Caminhos</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Intro / locale voz</td><td><code>post-announcement.ts</code>, <code>speech-text.ts</code>, <code>speech-locale.ts</code></td></tr>
+          <tr><td>Fish / lab</td><td><code>fish-audio.ts</code>, <code>fish-voice-engine.ts</code>, <code>lab-voice-session.ts</code>, <code>api/admin/lab/tts</code></td></tr>
+          <tr><td>Fish / Audiopost pago</td><td><code>audiopost-voice-session.ts</code>, <code>api/listening/tts</code>, <code>voice-products.ts</code></td></tr>
+          <tr><td>Player principal</td><td><code>audiopost-now-playing-shell.tsx</code>, <code>listen-queue-provider.tsx</code> (fila + visor como no lab)</td></tr>
+          <tr><td>Fila consumo</td><td><code>queue-enqueue.ts</code>, <code>listening-queue.ts</code>, <code>api/listening/queue</code></td></tr>
+          <tr><td>Sync X</td><td><code>sync-listening.ts</code>, <code>x-listening.ts</code></td></tr>
+          <tr><td>Player</td><td><code>floating-listen-player.tsx</code>, <code>listen-queue-provider.tsx</code></td></tr>
+          <tr><td>Entitlements admin</td><td><code>entitlements.ts</code></td></tr>
+          <tr><td>Lab UI</td><td><code>voice-dev-lab.tsx</code></td></tr>
+          <tr><td>SQL</td><td><code>supabase/migrations/00019_listening_queue_no_unconsume.sql</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>28.7 URLs de teste</h3>
+      <ul>
+        <li>Lab voz: <code>http://localhost:3002/admin/lab/voice</code></li>
+        <li>Audiopost: <code>http://localhost:3002/app</code></li>
+        <li>Esta âncora: <code>#audiopost-voz-fila-maio-2026</code> · fila: <code>#fila-consumida-bloqueio</code></li>
+      </ul>
+    </section>
+
+    <section id="library-bar-maio-2026">
+      <h2>29. Barra Library (rodapé) — volume e equalizer (Maio 2026)</h2>
+      <div class="callout ok">
+        <strong>Implementado.</strong> O player fixo no rodapé do dashboard <code>/app</code> controla apenas a
+        <strong>leitura de livros/PDF da Library</strong> — não altera o Audiopost da fila (posts X).
+      </div>
+
+      <h3>29.1 Controles</h3>
+      <table>
+        <thead>
+          <tr><th>Controlo</th><th>Função</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Play / Pause / Anterior / Seguinte</td>
+            <td><code>PdfReadingPlayer</code> (headless) via <code>LibraryBottomBar</code></td>
+          </tr>
+          <tr>
+            <td>Volume (ícone + slider)</td>
+            <td>Nível 0–100% · mute restaura o último valor · <code>localStorage</code> <code>echonx:library-bottom-bar-volume</code></td>
+          </tr>
+          <tr>
+            <td>Equalizer (ícones sliders)</td>
+            <td>Painel <strong>Reading settings</strong>: velocidade 0,8–2,0x e idioma da voz (Auto, EN, PT-BR, ES, FR)</td>
+          </tr>
+          <tr>
+            <td>Shuffle / Repeat</td>
+            <td><strong>Removidos</strong> (eram decorativos)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>29.2 Persistência e escopo</h3>
+      <ul>
+        <li>Velocidade: <code>echonx:library-bottom-bar-speed</code> · idioma: <code>echonx:library-bottom-bar-language</code>.</li>
+        <li>Alterações de volume/velocidade/idioma aplicam-se no <strong>próximo trecho</strong> (limitação Web Speech no trecho atual).</li>
+        <li>Motor partilhado <code>getSharedVoiceEngine()</code> — a Library passa <code>volume</code> e <code>rate</code> só no <code>speak()</code> do PDF; a fila Audiopost não envia <code>volume</code> (fica 100%).</li>
+      </ul>
+
+      <h3>29.3 Outros UX (mesma janela)</h3>
+      <ul>
+        <li>Logo na sidebar → <code>/app/explore</code> (alinhado ao header).</li>
+        <li><code>devIndicators: false</code> em <code>next.config.ts</code> — oculta o badge “N” do Next em dev.</li>
+        <li>Planos <strong>Library Premium</strong> na billing — checkout Stripe quando <code>STRIPE_PRICE_LIBRARY_*</code> configurados; quota na barra (<code>LibraryQuotaStrip</code>); ver <a href="#stripe-library-billing-maio-2026">§30</a>.</li>
+      </ul>
+
+      <h3>29.4 Ficheiros principais</h3>
+      <table>
+        <thead>
+          <tr><th>Área</th><th>Caminhos</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Barra UI</td><td><code>library-bottom-bar.tsx</code></td></tr>
+          <tr><td>Contexto</td><td><code>audiopost-library-context.tsx</code></td></tr>
+          <tr><td>Leitor</td><td><code>pdf-reading-player.tsx</code></td></tr>
+          <tr><td>Definições</td><td><code>library-playback-settings.ts</code></td></tr>
+          <tr><td>Voz</td><td><code>library-voice-session.ts</code>, <code>voice-engine.ts</code></td></tr>
+          <tr><td>Quota UI</td><td><code>library-quota-strip.tsx</code></td></tr>
+          <tr><td>Billing / API</td><td><code>api/library/tts</code>, <code>library-entitlements.ts</code> — §30</td></tr>
+          <tr><td>Dashboard</td><td><code>audiopost-dashboard.tsx</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="stripe-library-billing-maio-2026">
+      <h2>30. Stripe, Library Premium — planos, quota, upgrade, downgrade e bloqueio (Maio 2026)</h2>
+      <div class="callout ok">
+        <strong>Estado:</strong> implementado no código e nas migrações Supabase
+        <code>00021_library_subscriptions.sql</code> + <code>00022_library_bytes_increment.sql</code>.
+        Documentação operacional: <code>docs/STRIPE-SETUP.md</code>, <code>docs/LIBRARY-BILLING.md</code>.
+      </div>
+
+      <h3>30.1 Dois produtos de assinatura (independentes)</h3>
+      <table>
+        <thead>
+          <tr><th>Produto</th><th>Tabela Supabase</th><th>Stripe metadata</th><th>O que desbloqueia</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Audiopost</strong></td>
+            <td><code>public.subscriptions</code></td>
+            <td><code>billing_product=audiopost</code></td>
+            <td>Fila / Now Playing Fish · limites de perfis X externos (Starter / Popular / Pro)</td>
+          </tr>
+          <tr>
+            <td><strong>Library Premium</strong></td>
+            <td><code>public.library_subscriptions</code></td>
+            <td><code>billing_product=library</code></td>
+            <td>Fish S2 Pro na leitura Gutenberg/PDF · quota mensal em bytes UTF-8</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Um utilizador pode ter Audiopost Free + Library Pro, ou Starter + Library Starter, etc.
+        As subscrições Stripe são <strong>separadas</strong> (checkout e Price ID distintos por produto).
+      </p>
+
+      <h3>30.2 Audiopost — Stripe (resumo)</h3>
+      <ul>
+        <li><strong>Checkout:</strong> <code>POST /api/billing/checkout</code> — body <code>{ "plan": "starter"|"popular"|"pro" }</code></li>
+        <li><strong>Webhook:</strong> <code>POST /api/webhooks/stripe</code> — eventos <code>checkout.session.completed</code>, <code>customer.subscription.*</code></li>
+        <li><strong>Portal:</strong> <code>POST /api/billing/portal</code> — gerir subscrição Audiopost</li>
+        <li><strong>Env:</strong> <code>STRIPE_PRICE_STARTER</code>, <code>STRIPE_PRICE_POPULAR</code>, <code>STRIPE_PRICE_PRO</code></li>
+        <li><strong>Entitlement:</strong> <code>loadUserEntitlement</code> — plano efetivo só se <code>current_period_end</code> &gt; agora (sem data = não ativo)</li>
+        <li><strong>Free + Fish:</strong> Free na fila usa Web Speech; Fish em <code>/api/listening/tts</code> para Starter+</li>
+      </ul>
+      <p>URLs de retorno: <code>?checkout=success</code> / <code>?checkout=cancelled</code> em <code>/app/settings/billing</code>.</p>
+
+      <h3>30.3 Library — voz Free vs paga</h3>
+      <table>
+        <thead>
+          <tr><th>Modo</th><th>Motor</th><th>Limite de áudio</th><th>Qualidade</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Free</strong> (sem linha paga em <code>library_subscriptions</code>)</td>
+            <td>Web Speech (browser)</td>
+            <td><strong>Ilimitado</strong></td>
+            <td>Voz do sistema — sem custo Fish</td>
+          </tr>
+          <tr>
+            <td><strong>Library Starter / Popular / Pro</strong> (período ativo)</td>
+            <td>Fish S2 Pro via <code>/api/library/tts</code></td>
+            <td>Quota mensal em bytes UTF-8</td>
+            <td>Narração studio (Fish)</td>
+          </tr>
+          <tr>
+            <td><strong>Pago com quota esgotada</strong></td>
+            <td>Web Speech (fallback automático)</td>
+            <td>Ilimitado no browser</td>
+            <td>Fish <strong>bloqueado</strong> até upgrade ou renovação</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Decisão §4 (produto):</strong> melhor qualidade exige plano Library pago.
+        Free nunca conta bytes; não há bloqueio de tempo no Web Speech.
+      </div>
+
+      <h3>30.4 Quota — o que conta e onde grava</h3>
+      <ul>
+        <li><strong>Unidade:</strong> bytes UTF-8 do texto enviado à API Fish (após <code>prepareMirroredPostForSpeech</code>).</li>
+        <li><strong>Campos DB:</strong> <code>period_byte_quota</code> (teto do ciclo), <code>bytes_consumed</code> (uso acumulado), <code>current_period_end</code>.</li>
+        <li><strong>Débito:</strong> após síntese Fish bem-sucedida em <code>POST /api/library/tts</code> → RPC <code>increment_library_bytes_consumed(owner, delta)</code>.</li>
+        <li><strong>Pré-check:</strong> antes de chamar Fish, servidor recusa se <code>bytes_consumed + tamanho_segmento &gt; period_byte_quota</code> → HTTP 403 <code>LIBRARY_QUOTA_EXHAUSTED</code>.</li>
+        <li><strong>Renovação:</strong> quando Stripe confirma novo ciclo (<code>current_period_end</code> muda, mesmo tier) → <code>bytes_consumed = 0</code>, quota = teto mensal do plano.</li>
+        <li><strong>Não acumula:</strong> bytes não usados no mês <strong>não passam</strong> para o ciclo seguinte.</li>
+      </ul>
+
+      <h3 id="library-upgrade-regra-a">30.5 Upgrade no meio do ciclo — regra A (só delta)</h3>
+      <div class="callout ok">
+        <strong>Confirmado:</strong> ao subir de tier <em>no mesmo período de faturação</em>, o utilizador ganha apenas a
+        <strong>diferença</strong> entre as quotas mensais dos dois planos — não a quota inteira do plano novo em cima da antiga.
+      </div>
+      <table>
+        <thead>
+          <tr><th>Transição</th><th>Delta de quota (exemplo)</th><th><code>bytes_consumed</code></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Starter → Popular</td>
+            <td>+300.000 (600k − 300k)</td>
+            <td><strong>Mantém</strong> o já consumido</td>
+          </tr>
+          <tr>
+            <td>Popular → Pro</td>
+            <td>+600.000 (1,2M − 600k)</td>
+            <td><strong>Mantém</strong></td>
+          </tr>
+          <tr>
+            <td>Starter → Pro</td>
+            <td>+900.000 (1,2M − 300k)</td>
+            <td><strong>Mantém</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Exemplo:</strong> Starter 300k, já consumiu 280k → sobram 20k Fish.
+        Upgrade para Popular → teto efetivo 300k + 300k delta = <strong>600k</strong> no ciclo; consumido continua 280k → ~320k Fish restantes.
+      </p>
+      <p>
+        Código: <code>libraryQuotaDeltaOnUpgrade</code> + <code>applyLibraryPlanTransition</code> em
+        <code>library-quota-policy.ts</code> · sync webhook em <code>library-stripe-sync.ts</code>.
+      </p>
+
+      <h3 id="library-checkout-por-plano">30.6 Stripe — checkout por plano (sem proration na mesma sessão)</h3>
+      <div class="callout ok">
+        <strong>Confirmado:</strong> cada tier Library tem o seu <strong>Price ID</strong> no Stripe.
+        Mudar de plano = <strong>novo Checkout Session</strong> (<code>POST /api/billing/library/checkout</code>),
+        não alteração automática de preço na subscrição antiga com proration.
+      </div>
+      <ul>
+        <li><code>STRIPE_PRICE_LIBRARY_STARTER</code>, <code>STRIPE_PRICE_LIBRARY_POPULAR</code>, <code>STRIPE_PRICE_LIBRARY_PRO</code></li>
+        <li>Metadata na subscrição: <code>billing_product=library</code>, <code>plan_tier=library-starter|library-popular|library-pro</code>, <code>owner_x_user_id</code></li>
+        <li>Retorno: <code>?checkout=library-success</code> / <code>?checkout=library-cancelled</code></li>
+        <li>Se já existir outra subscrição Stripe Library ativa, o webhook <strong>cancela</strong> a subscrição anterior ao ativar a nova (evita duplicar cobrança).</li>
+      </ul>
+
+      <h3 id="library-downgrade-imediato">30.7 Downgrade — corta na hora</h3>
+      <div class="callout warn">
+        <strong>Confirmado:</strong> ao passar para um tier <strong>menor</strong>, o teto <code>period_byte_quota</code> passa
+        imediatamente ao valor mensal do plano novo — <strong>não</strong> espera o fim do ciclo.
+      </div>
+      <table>
+        <thead>
+          <tr><th>Situação após downgrade</th><th>Comportamento Fish</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>bytes_consumed</code> ≤ novo teto</td>
+            <td>Fish continua até esgotar o novo teto</td>
+          </tr>
+          <tr>
+            <td><code>bytes_consumed</code> &gt; novo teto</td>
+            <td>Fish <strong>bloqueado</strong> de imediato; Web Speech ilimitado; upgrade ou renovação para voltar a Fish</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Exemplo: Popular 600k com 500k consumidos → downgrade Starter (300k) → quota efetiva 300k, consumido 500k → Fish bloqueado.</p>
+
+      <h3 id="library-pro-renovacao">30.8 Library Pro esgotado — só renovação</h3>
+      <div class="callout">
+        <strong>Confirmado:</strong> no tier <strong>Pro</strong> (último), não há upgrade nem pacotes de horas extra.
+        Com quota a zero antes do fim do ciclo, o utilizador deve <strong>aguardar</strong> o pagamento recorrente Stripe;
+        após confirmação (<code>customer.subscription.updated</code> com novo período), o webhook repõe quota e zera consumo.
+      </div>
+      <ul>
+        <li>UI: mensagem “renova em {data}” na barra (<code>LibraryQuotaStrip</code>) e no preview do player.</li>
+        <li>Link de billing: secção <code>#library-premium</code> · query <code>?library=library-popular</code> para destacar card de upgrade (Starter/Popular apenas).</li>
+      </ul>
+
+      <h3 id="library-bloqueio-fluxo">30.9 Fluxo de bloqueio Fish (cliente + servidor)</h3>
+      <pre><code>Utilizador → Play no PdfReadingPlayer (Library)
+    → GET /api/library/tts (estado: backend, bytes restantes, exhaustedAction)
+    → Se fishActive: engine Fish → POST /api/library/tts por segmento
+         → OK: debita bytes · header X-Library-Bytes-Charged
+         → 403 LIBRARY_QUOTA_EXHAUSTED: erro + upgradeUrl
+    → Se !fishActive: Web Speech (getSharedVoiceEngine / createVoiceEngine)
+    → Barra: LibraryQuotaStrip (progresso % ou CTA Upgrade / data renovação)</code></pre>
+
+      <h3>30.10 Tabela de decisões (resumo executivo)</h3>
+      <table>
+        <thead>
+          <tr><th>Pergunta</th><th>Resposta acordada</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mais horas no mesmo mês?</td><td>Só <strong>upgrade</strong> de tier (regra A — delta de bytes)</td></tr>
+          <tr><td>Recarga / pacote extra no mesmo plano?</td><td><strong>Não</strong></td></tr>
+          <tr><td>Como muda de plano Library no Stripe?</td><td><strong>Checkout</strong> dedicado por Price ID</td></tr>
+          <tr><td>Downgrade quando aplica?</td><td><strong>Imediato</strong> (teto menor na hora)</td></tr>
+          <tr><td>Free Library tem limite?</td><td><strong>Não</strong> (Web Speech ilimitado)</td></tr>
+          <tr><td>Pro sem quota?</td><td>Esperar <strong>renovação</strong> do ciclo Stripe</td></tr>
+          <tr><td>O que não rollover?</td><td>Bytes Fish não usados no período</td></tr>
+        </tbody>
+      </table>
+
+      <h3>30.11 Variáveis de ambiente e migrações</h3>
+      <table>
+        <thead>
+          <tr><th>Variável / artefacto</th><th>Uso</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>STRIPE_SECRET_KEY</code>, <code>STRIPE_WEBHOOK_SECRET</code></td><td>Checkout + webhook Audiopost e Library</td></tr>
+          <tr><td><code>STRIPE_PRICE_LIBRARY_*</code></td><td>Três preços mensais Library</td></tr>
+          <tr><td><code>FISH_AUDIO_API_KEY</code></td><td>Síntese Fish (Audiopost + Library)</td></tr>
+          <tr><td><code>00021_library_subscriptions</code></td><td>Tabela + enum <code>library_plan_tier</code></td></tr>
+          <tr><td><code>00022_library_bytes_increment</code></td><td>RPC atómica de consumo</td></tr>
+        </tbody>
+      </table>
+
+      <h3>30.12 Ficheiros no repositório</h3>
+      <table>
+        <thead>
+          <tr><th>Área</th><th>Caminhos</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Política de produto</td><td><code>src/lib/billing/library-quota-policy.ts</code></td></tr>
+          <tr><td>Entitlements</td><td><code>library-entitlements.ts</code>, <code>library-byte-usage.ts</code></td></tr>
+          <tr><td>Planos / preços UI</td><td><code>library-plans.ts</code>, <code>billing-conversion-page.tsx</code></td></tr>
+          <tr><td>Stripe Library</td><td><code>api/billing/library/checkout</code>, <code>library-stripe-sync.ts</code>, <code>stripe-config.ts</code></td></tr>
+          <tr><td>Stripe Audiopost</td><td><code>api/billing/checkout</code>, <code>stripe-subscription-sync.ts</code></td></tr>
+          <tr><td>Webhook</td><td><code>api/webhooks/stripe/route.ts</code></td></tr>
+          <tr><td>TTS + quota</td><td><code>api/library/tts/route.ts</code></td></tr>
+          <tr><td>Player</td><td><code>library-voice-session.ts</code>, <code>pdf-reading-player.tsx</code></td></tr>
+          <tr><td>UI quota</td><td><code>library-quota-strip.tsx</code>, <code>library-bottom-bar.tsx</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>30.13 URLs de teste</h3>
+      <ul>
+        <li>Billing: <code>http://localhost:3002/app/settings/billing#library-premium</code></li>
+        <li>Library player: <code>http://localhost:3002/app</code> (secção Library + barra inferior)</li>
+        <li>Estado quota (JSON): <code>GET /api/library/tts</code> (autenticado)</li>
+        <li>Webhook local: <code>stripe listen --forward-to localhost:3002/api/webhooks/stripe</code></li>
+        <li>Âncora desta secção: <code>#stripe-library-billing-maio-2026</code></li>
+      </ul>
+    </section>
+
+    <section id="atualizacoes-library-xprofiles-maio-2026">
+      <h2>32. Atualizações — Library player e perfis X (Maio 2026)</h2>
+      <p>
+        Correções e melhorias após <a href="#backup-v1-5">Backupv1.5</a> (Stripe test). Âncora: <code>#atualizacoes-library-xprofiles-maio-2026</code>.
+      </p>
+
+      <h3>32.1 Library — troca de livro sem travar</h3>
+      <div class="callout ok">
+        <strong>Problema:</strong> ao mudar de livro na grelha Library e carregar Play, o leitor podia ficar preso ou mostrar
+        <em>“We could not load this recommendation…”</em> com áudio do livro anterior ainda ativo.
+      </div>
+      <table>
+        <thead><tr><th>Correção</th><th>Detalhe</th></tr></thead>
+        <tbody>
+          <tr><td>Parar motor certo</td><td><code>stopReading()</code> chama <code>engineRef.current.stop()</code> (Fish / Web Speech da Library), não só o motor partilhado da fila.</td></tr>
+          <tr><td>Cancelar download</td><td><code>AbortController</code> no fetch do texto/PDF ao trocar <code>selectedSource.id</code>.</td></tr>
+          <tr><td>Sem segmentos antigos</td><td><code>segmentsRef</code> + <code>activeSourceIdRef</code> — a leitura só continua se o livro ativo for o mesmo.</td></tr>
+          <tr><td>Play durante loading</td><td>Botão Play enquanto carrega agenda <code>pendingPlay</code> e inicia quando o texto fica <code>ready</code>.</td></tr>
+          <tr><td>Barra inferior</td><td>Preview <code>Loading book…</code> durante o fetch; erros mais claros (“this book”).</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Ficheiro:</strong> <code>src/components/app/pdf-reading-player.tsx</code> · teste: <code>http://localhost:3002/app</code> → Library → livro A → Play → livro B → Play.</p>
+
+      <h3>32.2 X profiles — remoção no painel</h3>
+      <p>
+        Na secção <strong>X profiles</strong> do dashboard (<code>/app</code>), cada linha tem um botão <strong>X</strong> que remove o perfil da lista de escuta.
+      </p>
+      <ul>
+        <li>Remove a linha em <code>want_to_hear</code> (liberta slot do plano para voltar a adicionar — limites em <code>src/lib/plans.ts</code>).</li>
+        <li>Apaga posts <strong>não consumidos</strong> desse autor da <code>listening_queue</code>.</li>
+        <li>Atualiza a fila de áudio (<code>echonx:listening-queue-refresh</code>).</li>
+        <li>Checkout continua a exigir <strong>login</strong>; metadados <code>owner_x_user_id</code> no Stripe (ver §31.1 em <a href="#backup-v1-5">Backupv1.5</a>).</li>
+      </ul>
+      <table>
+        <thead><tr><th>Ficheiro</th><th>Papel</th></tr></thead>
+        <tbody>
+          <tr><td><code>audiopost-x-profiles-panel.tsx</code></td><td>UI do botão X</td></tr>
+          <tr><td><code>server/actions/listen.ts</code></td><td><code>unfollowProfile()</code> + revalidate</td></tr>
+        </tbody>
+      </table>
+
+      <h3>32.3 Webhook (melhoria herdada neste ciclo)</h3>
+      <p>
+        Eventos Stripe não tratados (ex. <code>product.created</code>) respondem <strong>200</strong> sem abrir Supabase;
+        só <code>checkout.session.completed</code> e <code>customer.subscription.*</code> sincronizam planos.
+        <code>src/app/api/webhooks/stripe/route.ts</code>.
+      </p>
+    </section>
+
+    <section id="atualizacoes-hydration-volume-maio-2026">
+      <h2>34. Atualizações — hidratação, volume Library e dev (Maio 2026)</h2>
+      <p>
+        Correções após <a href="#backup-v1-6">Backupv1.6</a>. Âncora: <code>#atualizacoes-hydration-volume-maio-2026</code>.
+      </p>
+
+      <h3>34.1 Listening map — hidratação (Ctrl+Shift+R)</h3>
+      <div class="callout ok">
+        <strong>Problema:</strong> hard refresh em <code>/app</code> mostrava erro Next.js
+        <em>Hydration failed</em> — servidor <code>0m</code>, cliente <code>47m</code> (dados em <code>localStorage</code>).
+      </div>
+      <p>
+        Estado inicial sempre vazio; <code>loadWeeklyListening()</code> só no <code>useEffect</code> após mount.
+        <strong>Ficheiro:</strong> <code>audiopost-listening-map-card.tsx</code>.
+      </p>
+
+      <h3>34.2 Busca do header — a11y</h3>
+      <p>
+        Campo de busca com <code>role="combobox"</code>, <code>aria-haspopup="listbox"</code> e lista com <code>role="listbox"</code>
+        — remove aviso ESLint no overlay Dev Tools do Next.js.
+        <strong>Ficheiro:</strong> <code>profile-global-search.tsx</code>.
+      </p>
+
+      <h3>34.3 Library — volume em tempo real</h3>
+      <p>
+        O slider da barra inferior passa a chamar <code>setVolume()</code> no motor Fish/Web Speech durante a reprodução
+        (<code>voice-engine.ts</code>, <code>fish-voice-engine.ts</code>, <code>pdf-reading-player.tsx</code>).
+      </p>
+      <p><strong>Nota:</strong> volume do card <em>Now Playing</em> no topo continua decorativo (fila Audiopost).</p>
+    </section>
+
+    <section id="explore-feed-4colunas-maio-2026">
+      <h2>36. Explore — feed em 4 colunas (Maio 2026)</h2>
+      <p>
+        Redesign apenas em <code>/app/explore</code>, após <a href="#backup-v1-7">Backupv1.7</a>.
+        Âncora: <code>#explore-feed-4colunas-maio-2026</code>.
+      </p>
+
+      <h3>36.1 Layout desktop</h3>
+      <table>
+        <thead><tr><th>Coluna</th><th>Largura (~)</th><th>Conteúdo</th></tr></thead>
+        <tbody>
+          <tr><td>1 Esquerda</td><td>252–260px</td><td>Perfil, estatísticas rápidas, perfis ativos (Want to Hear), ações rápidas</td></tr>
+          <tr><td>2 Feed</td><td>360–520px</td><td>Filtros, ordenação, busca, criar post, cards com player/waveform</td></tr>
+          <tr><td>3 Signals</td><td>168–200px</td><td>Feed Signals (métricas 24h) + Atividade recente</td></tr>
+          <tr><td>4 Direita</td><td>240–280px</td><td>Now Listening, Trending, Recomendações, Most Listened Today</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Grelha:</strong> <code>explore-page-shell.tsx</code> · <code>explore/layout.tsx</code> (largura total, max ~1560px).</p>
+
+      <h3>36.2 Topo do feed</h3>
+      <ul>
+        <li>Tabs: All Posts · Native EchonX · From X · Following Only</li>
+        <li>Sort by (linha 2, alinhado dentro do card — sem overflow)</li>
+        <li>Banner de novos posts (5 min) + Atualizar feed</li>
+        <li>Busca por autor / palavra-chave / tema</li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>explore-feed-toolbar.tsx</code>, <code>explore-feed-post-card.tsx</code>, <code>load-explore-extras.ts</code>.</p>
+    </section>
+
+    <section id="explore-feed-refresh-imagens-x-maio-2026">
+      <h2>38. Explore — refresh do feed e imagens X (Maio 2026)</h2>
+      <p>
+        Melhorias após <a href="#backup-v1-8">Backupv1.8</a>. Âncora: <code>#explore-feed-refresh-imagens-x-maio-2026</code>.
+      </p>
+
+      <h3>38.1 Refresh feed</h3>
+      <ul>
+        <li>Banner conta posts não vistos + eventos realtime (insert em <code>posts</code>)</li>
+        <li>Botão <strong>Refresh feed</strong> chama <code>refreshExploreFeed()</code> (<code>revalidatePath</code>) + <code>router.refresh()</code></li>
+        <li>Estado de carregamento no botão; banner limpa após o feed atualizar</li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>explore-page-shell.tsx</code>, <code>explore-feed-live.tsx</code>, <code>server/actions/explore-feed.ts</code>.</p>
+
+      <h3>38.2 Imagens importadas do X</h3>
+      <ul>
+        <li><code>PostFeedImage</code> — posts <code>qubic_x</code> / <code>x</code> / perfil <code>external_x</code>: proporção original (<code>object-contain</code>)</li>
+        <li>Posts nativos EchonX: mantêm moldura <strong>16:9</strong> com <code>object-cover</code></li>
+        <li>Novas importações Qubic guardam <code>xImageDimensions</code> no <code>moderation_payload</code> (API X: <code>width</code>, <code>height</code>)</li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>components/posts/post-feed-image.tsx</code>, <code>lib/posts/post-image-display.ts</code>, <code>lib/x/client.ts</code>.</p>
+
+      <h3>38.3 Tema Lumos no Explore</h3>
+      <p><code>isAudiopostPath</code> aplica tema escuro só em <code>/app</code> (dashboard Audiopost); Explore e Settings respeitam Lumos do perfil.</p>
+    </section>
+
+    <section id="echonx-ai-context-analysis-maio-2026">
+      <h2>40. EchonX AI Context Analysis (Maio 2026)</h2>
+      <p>
+        Camada de <strong>análise contextual</strong> por post — não motor de verdade absoluta. Âncora: <code>#echonx-ai-context-analysis-maio-2026</code>.
+        Evolução após <a href="#backup-v1-9">Backupv1.9</a>.
+      </p>
+
+      <h3>40.1 Posicionamento de produto</h3>
+      <ul>
+        <li>UI: botão <strong>AI Context</strong> · painel <strong>EchonX · Context Analysis</strong></li>
+        <li>Evitar: “Verification”, “Verified”, “Not verified” como veredito final</li>
+        <li>Tom: insight neutro, sinal de confiabilidade contextual, sem censura nem fact-check absoluto</li>
+        <li>Modelo: <code>gpt-4.1-mini</code> · resposta JSON <code>{ confidence, insight }</code> · máx. 220 caracteres</li>
+      </ul>
+
+      <h3>40.2 Confiança contextual</h3>
+      <table>
+        <thead><tr><th>Nível</th><th>UI</th></tr></thead>
+        <tbody>
+          <tr><td><code>high</code></td><td>High Context Confidence</td></tr>
+          <tr><td><code>moderate</code></td><td>Moderate Context Confidence</td></tr>
+          <tr><td><code>limited</code></td><td>Limited Context Confidence</td></tr>
+        </tbody>
+      </table>
+      <p>Coluna <code>post_verifications.confidence_level</code> — migração <code>00024_ai_context_confidence.sql</code>.</p>
+
+      <h3>40.3 Cache e limites diários</h3>
+      <ul>
+        <li>Cache partilhado: <code>post_verifications</code> por <code>post_id</code> + <code>content_hash</code> (hash do texto + imagens)</li>
+        <li><strong>Limite conta só chamadas OpenAI</strong> (<code>ai_verification_logs.cache_hit = false</code>)</li>
+        <li>Leitura em cache (mesmo post, vários utilizadores): sem OpenAI, sem gastar quota</li>
+        <li>Reabrir painel no browser: estado local, sem API</li>
+        <li>Free: 3 análises OpenAI/dia · Assinante <strong>AI Analysis</strong> ($19/mês): 30/dia</li>
+        <li>4.ª tentativa (free) → <code>/pricing#ai-plan</code></li>
+      </ul>
+
+      <h3>40.4 Backend e billing</h3>
+      <ul>
+        <li><code>POST /api/ai/verify-post</code> — chave <code>OPENAI_API_KEY</code> só no servidor</li>
+        <li>Stripe: <code>STRIPE_PRICE_AI_ANALYSIS</code> · produto <code>ai-analysis</code> · tabela <code>ai_subscriptions</code></li>
+        <li>Checkout: <code>/api/billing/ai/checkout</code> · card em <code>/app/settings/billing#ai-plan</code></li>
+        <li>Migrações: <code>00023_ai_verification.sql</code>, <code>00024_ai_context_confidence.sql</code></li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>lib/ai/context-analysis.ts</code>, <code>lib/ai/openai-verify.ts</code>, <code>lib/ai/run-post-verification.ts</code>, <code>components/posts/post-context-analysis.tsx</code>, <code>lib/billing/ai-plans.ts</code>, <code>lib/billing/ai-stripe-sync.ts</code>.</p>
+
+      <h3>40.5 UX de carregamento</h3>
+      <p>Shimmer, pulso “Analyzing context…”, painel premium; <code>translate="no"</code> no widget (compatível com tradução do browser).</p>
+
+      <h3>40.6 Futuro (só scaffold)</h3>
+      <p><code>AI_CONTEXT_FUTURE_CAPABILITIES</code>: deep_analysis, source_trace, bias_detection, narrative_analysis, contradiction_detection, web_search_layer — <strong>sem web search implementado</strong>.</p>
+    </section>
+
+    <section id="native-profile-intelligence-maio-2026">
+      <h2>42. Perfil nativo — Intelligence UI, Lumos e reparação de tipo (Maio 2026)</h2>
+      <p>
+        Evolução da página pública <code>/u/[username]</code> apenas para <code>profiles.kind = native</code>.
+        Perfis <code>external_x</code> e <code>curator</code> mantêm o layout legado.
+        Âncora: <code>#native-profile-intelligence-maio-2026</code>. Evolução após <a href="#backup-v1-10">Backupv1.10</a>.
+      </p>
+
+      <h3>42.1 Intelligence profile (next-gen)</h3>
+      <ul>
+        <li>Hero cinematográfico: Signal Level (01–05), Context Score (anel), badges Native + AI Context</li>
+        <li>6 métricas: listening time, posts heard, interactions, AI context runs, deep listen rate, followers listening</li>
+        <li>AI Context Summary + Cognitive tags · Signal Reputation (5 barras + nota)</li>
+        <li>Feed <strong>Intelligence transmissions</strong> com stats por post (completion, context score, waveform)</li>
+        <li>Network signals, timeline de áudio, categorias de listening</li>
+        <li>Dados: <code>load-native-profile-intelligence.ts</code> (Supabase: <code>text_read_events</code>, <code>want_to_hear</code>, <code>post_verifications</code>, etc.)</li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>components/profile/native-intelligence/</code>, <code>components/profile/legacy-public-profile-layout.tsx</code>, ramo em <code>app/(marketing)/u/[username]/page.tsx</code>.</p>
+
+      <h3>42.2 Lumos no perfil nativo</h3>
+      <ul>
+        <li>Tema global Lumos/Dark em <code>/profile</code> (<code>ThemeModeToggle</code>)</li>
+        <li>Admins: Lumos aplica-se em rotas <code>/u/...</code>; visitantes não-admin continuam Dark no marketing</li>
+        <li>Perfil nativo: CSS dedicado <code>src/styles/native-profile-lumos.css</code> (<code>html:not(.dark) .echonx-native-profile</code>)</li>
+        <li>Audiopost <code>/app</code> permanece sempre Dark (<code>isAudiopostPath</code>)</li>
+        <li>Cognitive tags: classes <code>np-cognitive-tag</code> — texto cyan escuro legível no Lumos</li>
+      </ul>
+      <p><strong>Reverter Lumos no perfil:</strong> apagar <code>native-profile-lumos.css</code> + remover <code>@import</code> em <code>globals.css</code> (ver <code>native-profile-lumos.REVERT.txt</code>).</p>
+
+      <h3>42.3 Nativo vs External X (produto)</h3>
+      <table>
+        <thead><tr><th>Tipo</th><th>Origem</th><th>Seguir (Free)</th><th>Audiopost automático</th></tr></thead>
+        <tbody>
+          <tr><td><code>native</code></td><td>Login / conta EchonX</td><td>Sim (ilimitado)</td><td>Sim (regras de listening)</td></tr>
+          <tr><td><code>external_x</code></td><td>Importar @ do X para ouvir</td><td>Não (Starter+)</td><td>Plano pago; fila API filtra Free</td></tr>
+          <tr><td><code>curator</code></td><td>Canais oficiais (Qubic/News)</td><td>Qubic free / outros conforme plano</td><td>Conforme canal</td></tr>
+        </tbody>
+      </table>
+      <p><code>owner_x_user_id</code> external: prefixo <code>x:{twitterId}</code>. Nativo: UUID auth ou id Twitter sem prefixo <code>x:</code>.</p>
+
+      <h3>42.4 Reparação <code>kind</code> errado (external_x em conta nativa)</h3>
+      <ul>
+        <li>Sintoma: perfil com login (Create post, Edit) mas badge <strong>External X profile</strong></li>
+        <li>Causa provável: colisão ao importar @ no Audiopost relabelava <code>kind</code></li>
+        <li><code>repairAuthLinkedProfileKind</code> — corrige para <code>native</code> se <code>profiles.id</code> = utilizador auth e <code>owner_x_user_id</code> não começa por <code>x:</code></li>
+        <li><code>ensureExternalXProfile</code> deixa de sobrescrever perfis auth-linked</li>
+        <li>SQL manual (uma vez): <code>UPDATE profiles SET kind='native' WHERE ...</code> (ver doc de suporte)</li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>lib/profiles/profile-kind.ts</code>, <code>lib/profiles/repair-profile-kind.ts</code>, <code>server/actions/profile.ts</code>, <code>server/actions/x-listening.ts</code>.</p>
+    </section>
+
+    <section id="backup-v1-11">
+      <h2>43. Backupv1.11 — ponto de restauração (atual)</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.11</code> · 2026-05-24 · Perfil intelligence + Lumos profile + fix kind + âmbito <a href="#backup-v1-10">Backupv1.10</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (498 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.11\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.11\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.11.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.11</code></pre>
+      <p>Âncora: <code>#backup-v1-11</code> · Perfil: <code>#native-profile-intelligence-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-10">Backupv1.10</a>.</p>
+    </section>
+
+    <section id="backup-v1-10">
+      <h2>41. Backupv1.10 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.10</code> · 2026-05-23 · AI Context Analysis + âmbito <a href="#backup-v1-9">Backupv1.9</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (487 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.10\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.10\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.10.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.10</code></pre>
+      <p>Âncora: <code>#backup-v1-10</code> · AI: <code>#echonx-ai-context-analysis-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-9">Backupv1.9</a>.</p>
+    </section>
+
+    <section id="backup-v1-9">
+      <h2>39. Backupv1.9 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.9</code> · 2026-05-18 · refresh feed + imagens X + âmbito <a href="#backup-v1-8">Backupv1.8</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (465 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.9\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.9\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.9.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.9</code></pre>
+      <p>Âncora: <code>#backup-v1-9</code> · Explore: <code>#explore-feed-refresh-imagens-x-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-8">Backupv1.8</a> (sem refresh feed / imagens X naturais).</p>
+    </section>
+
+    <section id="backup-v1-8">
+      <h2>37. Backupv1.8 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.8</code> · 2026-05-23 · Explore 4 colunas + âmbito <a href="#backup-v1-7">Backupv1.7</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (460 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.8\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.8\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.8.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.8</code></pre>
+      <p>Âncora: <code>#backup-v1-8</code> · Explore: <code>#explore-feed-4colunas-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-7">Backupv1.7</a>.</p>
+    </section>
+
+    <section id="backup-v1-7">
+      <h2>35. Backupv1.7 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.7</code> · 2026-05-23 · hidratação + volume + âmbito <a href="#backup-v1-6">Backupv1.6</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (449 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.7\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.7\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.7.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.7</code></pre>
+      <p>Âncora: <code>#backup-v1-7</code> · atualizações: <code>#atualizacoes-hydration-volume-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-6">Backupv1.6</a>.</p>
+    </section>
+
+    <section id="backup-v1-6">
+      <h2>33. Backupv1.6 — ponto anterior</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.6</code> · 2026-05-23 · Library + perfis X + âmbito <a href="#backup-v1-5">Backupv1.5</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (447 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.6\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.6\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.6.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.6</code></pre>
+      <p>Âncora: <code>#backup-v1-6</code> · atualizações: <code>#atualizacoes-library-xprofiles-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-5">Backupv1.5</a>.</p>
+    </section>
+
+    <section id="backup-v1-5">
+      <h2>31. Backupv1.5 — ponto anterior (Stripe test)</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.5</code> · 2026-05-23 · criado após validação positiva do Stripe em modo test (checkout Starter, webhooks <code>200</code>, plano ativo na UI).
+      </div>
+      <h3>31.1 O que foi validado</h3>
+      <ul>
+        <li>Checkout Audiopost em <code>localhost:3002</code> com cartão teste <code>4242…</code> (modo Stripe Test + <code>npm run stripe:use-test</code>).</li>
+        <li><code>stripe listen --forward-to localhost:3002/api/webhooks/stripe</code> — eventos <code>checkout.session.completed</code> e <code>customer.subscription.*</code> com resposta <strong>200</strong>.</li>
+        <li>Supabase: coluna <code>subscriptions.stripe_subscription_id</code> (migração <code>00020</code>) + <code>NOTIFY pgrst, 'reload schema'</code>.</li>
+        <li>UI: utilizador logado obrigatório para pagar; plano <strong>Starter</strong> visível após webhook (ex.: perfil BCharles).</li>
+      </ul>
+      <h3>31.2 Artefactos do backup</h3>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (446 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.5\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.5\EchonX-mirror\</code></td></tr>
+          <tr><td>Manifesto</td><td><code>...\Backupv1.5\MANIFEST.json</code></td></tr>
+          <tr><td>Restore</td><td><code>...\Backupv1.5\RESTORE.md</code></td></tr>
+          <tr><td>Doc repositório</td><td><code>docs/BACKUP-Backupv1.5.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <h3>31.3 Âmbito técnico (vs Backupv1.4)</h3>
+      <table>
+        <thead><tr><th>Área</th><th>Incluído</th></tr></thead>
+        <tbody>
+          <tr><td>Stripe Audiopost</td><td><code>api/billing/checkout</code>, <code>stripe-subscription-sync.ts</code></td></tr>
+          <tr><td>Stripe Library</td><td><code>api/billing/library/checkout</code>, <code>library-stripe-sync.ts</code>, quota <code>api/library/tts</code></td></tr>
+          <tr><td>Webhook</td><td><code>api/webhooks/stripe/route.ts</code> (eventos tratados + ignorados com 200)</td></tr>
+          <tr><td>Migrações</td><td><code>00020</code>–<code>00022</code> (subscriptions + library_subscriptions + bytes RPC)</td></tr>
+          <tr><td>Env switch</td><td><code>env/stripe.test.env</code>, <code>stripe.live.env</code>, <code>npm run stripe:use-test|live</code></td></tr>
+          <tr><td>Docs</td><td><code>STRIPE-SETUP.md</code>, <code>STRIPE-ENV-SWITCH.md</code>, <code>LIBRARY-BILLING.md</code>, §30 Library billing</td></tr>
+        </tbody>
+      </table>
+      <h3>31.4 Comandos</h3>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.5</code></pre>
+      <p>Restaurar: ver <code>EchonX-backups\Backupv1.5\RESTORE.md</code>. Âncora: <code>#backup-v1-5</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-4">Backupv1.4</a> (2026-05-22).</p>
+    </section>
+
+    <section id="backup-v1-4">
+      <h2>26. Backupv1.4 — ponto anterior</h2>
+      <div class="callout">
+        <strong>ID do backup:</strong> <code>Backupv1.4</code> · 2026-05-22 · baseline antes do ciclo Stripe test (âmbito = <a href="#backup-v1-3">Backupv1.3</a>).
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (405 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.4\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.4\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.4.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\restore-phase-backup.ps1 -Phase Backupv1.4</code></pre>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.4</code></pre>
+    </section>
+
+    <section id="backup-v1-3">
+      <h2>27. Backupv1.3</h2>
+      <p>Admin + fila/player + §29. <code>...\Backupv1.3\</code> · <code>docs/BACKUP-Backupv1.3.md</code>.</p>
+    </section>
+
+    <section id="backup-v1-2">
+      <h2>28. Backupv1.2 — ponto anterior</h2>
+      <p>Library bar (volume + equalizer), logo Explore, <code>devIndicators: false</code>. Pasta: <code>...\Backupv1.2\</code> · <code>docs/BACKUP-Backupv1.2.md</code>.</p>
+    </section>
+
+    <section id="backup-v1">
+      <h2>25. Backupv1.0 — ponto de restauração (sistema funcional)</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.0</code> · criado após validação positiva do sistema (Maio 2026).
+        Restaura <strong>código, rotas e UX</strong> tal como neste momento — mesmos URLs e comportamento geral.
+      </div>
+
+      <h3>Endereços do backup (Windows)</h3>
+      <table>
+        <thead>
+          <tr><th>Artefacto</th><th>Caminho absoluto</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pasta raiz</td>
+            <td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\</code></td>
+          </tr>
+          <tr>
+            <td>Arquivo ZIP</td>
+            <td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\EchonX-full-source.zip</code></td>
+          </tr>
+          <tr>
+            <td>Espelho (cópia rápida)</td>
+            <td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\EchonX-mirror\</code></td>
+          </tr>
+          <tr>
+            <td>Manifesto JSON</td>
+            <td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\MANIFEST.json</code></td>
+          </tr>
+          <tr>
+            <td>Instruções restore</td>
+            <td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.0\RESTORE.md</code></td>
+          </tr>
+          <tr>
+            <td>Doc no repositório</td>
+            <td><code>docs/BACKUP-Backupv1.0.md</code> · lembrete <code>BACKUP-PHASE.txt</code> na raiz</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>URLs da aplicação (preservadas neste backup)</h3>
+      <table>
+        <thead>
+          <tr><th>Página</th><th>URL</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Dev / Home marketing</td><td><code>http://localhost:3002/</code></td></tr>
+          <tr><td>Audiopost (sidebar + dashboard)</td><td><code>http://localhost:3002/app</code></td></tr>
+          <tr><td>Explore</td><td><code>http://localhost:3002/app/explore</code></td></tr>
+          <tr><td>Settings / Billing</td><td><code>http://localhost:3002/app/settings/billing</code></td></tr>
+          <tr><td>About</td><td><code>http://localhost:3002/about</code></td></tr>
+          <tr><td>Login</td><td><code>http://localhost:3002/login</code></td></tr>
+          <tr><td>Esta documentação HTML</td><td><code>http://localhost:3002/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#backup-v1</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Conteúdo incluído no ZIP (~351 ficheiros)</h3>
+      <ul>
+        <li>Route groups <code>(audiopost)</code> + <code>(standard)</code> — §24</li>
+        <li>Biblioteca Gutenberg, tema Lumos/Dark por utilizador, admin lab, fixes §26 — <a href="#funcionalidades-estaveis-maio-2026">âncora §26</a></li>
+        <li>About §23, billing §22, componentes Audiopost, <code>public/pdf.worker.min.mjs</code></li>
+        <li>Scripts: <code>ensure-app-routes.js</code>, <code>copy-pdf-worker.js</code>, <code>kill-port.js</code>, <code>restore-phase-backup.ps1</code></li>
+        <li>Migrações Supabase em <code>supabase/migrations/</code></li>
+      </ul>
+      <p><strong>Excluído:</strong> <code>node_modules</code>, <code>.next</code>, <code>.next-dev</code>, <code>.env.local</code> (guardar à mão).</p>
+
+      <h3>Como restaurar</h3>
+      <pre><code>cd C:\Users\55479\Desktop\EchonX
+.\scripts\restore-phase-backup.ps1 -Phase Backupv1.0
+npm install
+npm run dev:clean</code></pre>
+      <p>Confirme com <strong>SIM</strong> quando o script pedir. Depois <strong>Ctrl+Shift+R</strong> no browser.</p>
+
+      <h3>Criar cópia nova deste backup</h3>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.0</code></pre>
+      <p>Backup anterior (layout clássico, 18/05): <code>PHASE-2026-05-18-pre-novas-alteracoes</code> na mesma pasta <code>EchonX-backups</code>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>URL: <code>/docs/html/2026-05-qubic-echonx-moeda-assinatura.html</code> · <a href="/docs/html/readme">README insights</a></p>
+  </footer>
+</body>
+</html>

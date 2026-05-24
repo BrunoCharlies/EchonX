@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { moderateImageWithEdgeOrFallback } from "@/lib/moderation-edge";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 1;
 
 export async function createPost(formData: FormData) {
   const session = await auth();
@@ -13,7 +13,7 @@ export async function createPost(formData: FormData) {
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) throw new Error("Post text is required.");
-  if (body.length > 5000) throw new Error("Post text is too long.");
+  if (body.length > 500) throw new Error("Post text must be 500 characters or fewer.");
 
   const files = formData
     .getAll("images")
@@ -26,13 +26,19 @@ export async function createPost(formData: FormData) {
   const supabase = createServiceRoleClient();
   const uid = session.user.id;
 
-  const { data: profile, error: profErr } = await supabase
+  const { data: profileById, error: profErr } = await supabase
     .from("profiles")
     .select("id")
-    .eq("owner_x_user_id", uid)
-    .single();
+    .eq("id", uid)
+    .maybeSingle();
 
-  if (profErr || !profile) throw new Error("Profile not found");
+  if (profErr) throw profErr;
+  const { data: profileByOwner, error: ownerErr } = profileById
+    ? { data: null, error: null }
+    : await supabase.from("profiles").select("id").eq("owner_x_user_id", uid).maybeSingle();
+  if (ownerErr) throw ownerErr;
+  const profile = profileById ?? profileByOwner;
+  if (!profile) throw new Error("Profile not found");
 
   const { data: inserted, error: insErr } = await supabase
     .from("posts")
@@ -74,8 +80,11 @@ export async function createPost(formData: FormData) {
   const { error: updErr } = await supabase.from("posts").update({ image_paths: urls }).eq("id", inserted.id);
   if (updErr) throw updErr;
 
+  // Followers are enqueued by DB trigger `enqueue_listeners_on_post` (listening_since + created_at).
+
   const { data: handleRow } = await supabase.from("profiles").select("username").eq("id", profile.id).single();
   if (handleRow?.username) {
     revalidatePath(`/u/${handleRow.username}`);
   }
+  revalidatePath("/app/explore");
 }

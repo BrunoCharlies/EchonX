@@ -1,7 +1,7 @@
 {
   "name": "EchonX",
   "short_name": "EchonX",
-  "description": "Profile-first social listening with on-device Supertonic voice.",
+  "description": "Profile-first social listening with on-device audio.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050506",
@@ -9,16 +9,16 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-192",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-512",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }

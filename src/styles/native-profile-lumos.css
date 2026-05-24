@@ -1,0 +1,209 @@
+/**
+ * Lumos theme for native intelligence profile (/u/[username], kind=native).
+ *
+ * REVERT: delete this file and remove the @import from src/app/globals.css
+ * (search for "native-profile-lumos"). Dark profile styling is unchanged in components.
+ */
+
+html:not(.dark) .echonx-native-profile {
+  --np-bg: 210 32% 96%;
+  --np-fg: 222 28% 12%;
+  --np-muted: 215 14% 42%;
+  --np-muted-soft: 215 12% 55%;
+  --np-border: 214 20% 86%;
+  --np-panel: 0 0% 100%;
+  --np-cyan: 188 94% 32%;
+  --np-violet: 262 65% 48%;
+  background-color: hsl(var(--np-bg)) !important;
+  color: hsl(var(--np-fg)) !important;
+}
+
+/* Shell & hero */
+html:not(.dark) .echonx-native-profile .np-hero-fallback {
+  background: radial-gradient(
+      ellipse at 30% 20%,
+      hsl(188 94% 43% / 0.18),
+      transparent 50%
+    ),
+    radial-gradient(ellipse at 80% 60%, hsl(262 83% 58% / 0.12), transparent 45%),
+    linear-gradient(180deg, hsl(210 40% 98%), hsl(var(--np-bg))) !important;
+}
+
+html:not(.dark) .echonx-native-profile .np-hero-overlay {
+  background: linear-gradient(
+    to top,
+    hsl(var(--np-bg)),
+    hsl(var(--np-bg) / 0.65),
+    transparent
+  ) !important;
+}
+
+html:not(.dark) .echonx-native-profile .np-hero-glow {
+  background: radial-gradient(
+    circle at 50% 100%,
+    hsl(188 94% 43% / 0.14),
+    transparent 55%
+  ) !important;
+}
+
+html:not(.dark) .echonx-native-profile .border-white\/\[0\.06\] {
+  border-color: hsl(var(--np-border)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .bg-white\/\[0\.02\] {
+  background-color: hsl(var(--np-panel) / 0.78) !important;
+  box-shadow: 0 4px 24px -8px hsl(188 94% 38% / 0.12), 0 1px 0 hsl(0 0% 100% / 0.8) inset;
+}
+
+html:not(.dark) .echonx-native-profile .bg-black\/50,
+html:not(.dark) .echonx-native-profile .bg-black\/40 {
+  background-color: hsl(var(--np-panel) / 0.92) !important;
+  box-shadow: 0 4px 20px -10px hsl(188 94% 38% / 0.15);
+}
+
+html:not(.dark) .echonx-native-profile .np-timeline-section {
+  background-color: hsl(210 28% 93% / 0.95) !important;
+  border-color: hsl(var(--np-border)) !important;
+}
+
+/* Typography */
+html:not(.dark) .echonx-native-profile .text-white,
+html:not(.dark) .echonx-native-profile .text-zinc-50,
+html:not(.dark) .echonx-native-profile .text-zinc-100 {
+  color: hsl(var(--np-fg)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-zinc-200,
+html:not(.dark) .echonx-native-profile .text-zinc-200\/95 {
+  color: hsl(222 22% 20%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-zinc-300 {
+  color: hsl(222 20% 24%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-zinc-400 {
+  color: hsl(var(--np-muted)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-zinc-500,
+html:not(.dark) .echonx-native-profile .text-zinc-600 {
+  color: hsl(var(--np-muted-soft)) !important;
+}
+
+/* Surfaces */
+html:not(.dark) .echonx-native-profile .bg-zinc-800,
+html:not(.dark) .echonx-native-profile .bg-zinc-800\/80 {
+  background-color: hsl(210 18% 90%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .bg-zinc-900 {
+  background-color: hsl(210 16% 92%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .border-zinc-800 {
+  border-color: hsl(var(--np-border)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .border-white\/5 {
+  border-color: hsl(var(--np-border) / 0.8) !important;
+}
+
+html:not(.dark) .echonx-native-profile .ring-white\/10 {
+  --tw-ring-color: hsl(var(--np-border)) !important;
+}
+
+/* Accent text (readable on light) */
+html:not(.dark) .echonx-native-profile .text-cyan-100,
+html:not(.dark) .echonx-native-profile .text-cyan-200 {
+  color: hsl(188 85% 28%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-cyan-300,
+html:not(.dark) .echonx-native-profile .text-cyan-300\/80,
+html:not(.dark) .echonx-native-profile .text-cyan-300\/90,
+html:not(.dark) .echonx-native-profile .text-cyan-400,
+html:not(.dark) .echonx-native-profile .text-cyan-400\/80,
+html:not(.dark) .echonx-native-profile .text-cyan-500\/70,
+html:not(.dark) .echonx-native-profile .text-cyan-500\/80 {
+  color: hsl(var(--np-cyan)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-violet-100,
+html:not(.dark) .echonx-native-profile .text-violet-200,
+html:not(.dark) .echonx-native-profile .text-violet-300\/70 {
+  color: hsl(var(--np-violet)) !important;
+}
+
+html:not(.dark) .echonx-native-profile .text-emerald-300 {
+  color: hsl(160 70% 30%) !important;
+}
+
+/* Glass metrics */
+html:not(.dark) .echonx-glass-metric {
+  box-shadow: 0 2px 16px -6px hsl(188 94% 38% / 0.15) !important;
+}
+
+html:not(.dark) .echonx-glass-metric.border-cyan-500\/20 {
+  background-color: hsl(188 94% 38% / 0.07) !important;
+}
+
+html:not(.dark) .echonx-glass-metric.border-violet-500\/20 {
+  background-color: hsl(262 70% 52% / 0.06) !important;
+}
+
+/* Avatar frame */
+html:not(.dark) .echonx-native-profile .echonx-avatar-pulse {
+  opacity: 0.7;
+}
+
+html:not(.dark) .echonx-native-profile .border-cyan-400\/30 {
+  border-color: hsl(188 94% 38% / 0.45) !important;
+  box-shadow: 0 0 32px -6px hsl(188 94% 38% / 0.35) !important;
+}
+
+/* Transmission cards */
+html:not(.dark) .echonx-transmission {
+  background-color: hsl(var(--np-panel) / 0.92) !important;
+  border-color: hsl(188 94% 38% / 0.22) !important;
+  box-shadow: 0 4px 24px -12px hsl(188 94% 38% / 0.12);
+}
+
+html:not(.dark) .echonx-transmission .bg-black\/50 {
+  background-color: hsl(210 25% 94%) !important;
+}
+
+html:not(.dark) .echonx-transmission:hover {
+  box-shadow: 0 8px 36px -10px hsl(188 94% 38% / 0.22) !important;
+}
+
+/* Context ring track */
+html:not(.dark) .echonx-context-ring svg circle:first-of-type {
+  stroke: hsl(210 18% 88%) !important;
+}
+
+/* Dashed empty states */
+html:not(.dark) .echonx-native-profile .border-dashed.border-cyan-500\/20 {
+  background-color: hsl(188 94% 38% / 0.04) !important;
+}
+
+html:not(.dark) .echonx-native-profile .border-dashed.border-zinc-800 {
+  border-color: hsl(var(--np-border)) !important;
+  background-color: hsl(var(--np-panel) / 0.5) !important;
+}
+
+/* Follow CTA panel */
+html:not(.dark) .echonx-native-profile .border-cyan-500\/15.bg-cyan-500\/\[0\.04\] {
+  background-color: hsl(188 94% 38% / 0.08) !important;
+}
+
+/* Cognitive tags — readable on light chips (text-cyan-100/90 is not matched by .text-cyan-100) */
+html:not(.dark) .echonx-native-profile .np-cognitive-tags-label {
+  color: hsl(222 22% 28%) !important;
+}
+
+html:not(.dark) .echonx-native-profile .np-cognitive-tag {
+  color: hsl(188 92% 22%) !important;
+  border-color: hsl(188 70% 38% / 0.45) !important;
+  background-color: hsl(188 70% 42% / 0.12) !important;
+}

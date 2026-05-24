@@ -3,6 +3,10 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AppProviders } from "@/components/providers/app-providers";
+import { EchonxThemeProvider } from "@/components/theme/echonx-theme-provider";
+import { EchonxThemeScript } from "@/components/theme/echonx-theme-script";
+import { getServerLocale } from "@/lib/i18n/server";
+import { auth } from "@/auth";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -24,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s · EchonX",
   },
   description:
-    "Profile-first social listening for the United States market. Sign in with X, build your native EchonX profile, and listen with premium on-device Supertonic voice.",
+    "Profile-first social listening for the United States market. Sign in with X, build your native EchonX profile, and listen with premium on-device audio.",
   manifest: "/manifest.json",
   alternates: { canonical: "/" },
   openGraph: {
@@ -40,11 +44,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "EchonX",
     description:
-      "Profile-first social listening with automatic moderation, PWA install, and Supertonic on-device voice.",
+      "Profile-first social listening with automatic moderation, PWA install, and premium on-device audio.",
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/icons/icon-192.png",
+    icon: [{ url: "/icon", type: "image/png" }],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
   },
 };
 
@@ -56,15 +60,28 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getServerLocale();
+  const session = await auth();
+  const userId = session?.user.id ?? null;
+  const isAdmin = session?.user.role === "admin";
   return (
-    <html lang="en-US" className="dark" suppressHydrationWarning>
+    <html
+      lang={locale}
+      className="dark"
+      suppressHydrationWarning
+      data-user-id={userId ?? ""}
+      data-is-admin={isAdmin ? "1" : "0"}
+    >
       <body className={cn("min-h-dvh font-sans", inter.variable, jetbrains.variable)}>
-        <AppProviders>{children}</AppProviders>
+        <EchonxThemeScript />
+        <EchonxThemeProvider userId={userId} isAdmin={isAdmin}>
+          <AppProviders>{children}</AppProviders>
+        </EchonxThemeProvider>
       </body>
     </html>
   );

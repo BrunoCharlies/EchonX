@@ -1,0 +1,190 @@
+:root {
+  color-scheme: dark;
+  --bg: #03070d;
+  --card: rgba(12, 18, 28, 0.92);
+  --border: rgba(120, 160, 255, 0.18);
+  --text: #e8edf5;
+  --muted: #9aa8bc;
+  --accent: #5b9dff;
+  --accent-dim: rgba(91, 157, 255, 0.12);
+  --warn: #f0c674;
+  --ok: #7dcea0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  max-width: 52rem;
+  margin-inline: auto;
+  background: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(91, 157, 255, 0.14), transparent 55%), var(--bg);
+  color: var(--text);
+}
+
+.site-header {
+  margin-bottom: 2.5rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.75rem;
+  color: var(--text);
+}
+
+h3 {
+  font-size: 1.05rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--muted);
+}
+
+.lead {
+  font-size: 1.05rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+main section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+ul,
+ol {
+  padding-left: 1.25rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
+
+code {
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.12em 0.4em;
+  border-radius: 0.35em;
+}
+
+a {
+  color: var(--accent);
+}
+
+.doc-list {
+  list-style: none;
+  padding: 0;
+}
+
+.doc-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.doc-list li:last-child {
+  border-bottom: none;
+}
+
+.doc-list a {
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.doc-list a:hover {
+  text-decoration: underline;
+}
+
+.meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2em 0.55em;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  margin-right: 0.35rem;
+}
+
+.badge.pending {
+  background: rgba(240, 198, 116, 0.15);
+  color: var(--warn);
+}
+
+.callout {
+  border-left: 3px solid var(--accent);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  background: var(--accent-dim);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.callout.warn {
+  border-left-color: var(--warn);
+  background: rgba(240, 198, 116, 0.08);
+}
+
+footer {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.nav-top {
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.nav-top a {
+  text-decoration: none;
+}
+
+.nav-top a:hover {
+  text-decoration: underline;
+}

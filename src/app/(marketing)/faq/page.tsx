@@ -3,7 +3,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Answers about EchonX profiles, X login, listening limits, Supertonic voice, and Pro audio comments.",
+  description: "Answers about EchonX profiles, X login, listening limits, on-device audio, and Pro audio comments.",
 };
 
 const items = [
@@ -24,8 +24,8 @@ const items = [
     a: "Only posts created after your subscription begins are enqueued automatically. Older posts stay available, but you tap Listen to hear them on demand.",
   },
   {
-    q: "What voice engine do you use?",
-    a: "Supertonic runs on-device through WebAssembly and WebGPU, so your queue sounds great while minimizing sensitive text leaving your hardware.",
+    q: "How does audio playback work?",
+    a: "Playback runs on-device whenever possible, so your queue sounds great while minimizing sensitive text leaving your hardware.",
   },
   {
     q: "Who can record audio comments?",

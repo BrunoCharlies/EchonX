@@ -4,6 +4,31 @@
 
 @layer base {
   :root {
+    --background: 210 20% 98%;
+    --foreground: 222 28% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 28% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 28% 12%;
+    --primary: 188 94% 38%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 16% 93%;
+    --secondary-foreground: 222 28% 12%;
+    --muted: 210 14% 90%;
+    --muted-foreground: 215 14% 42%;
+    --accent: 262 70% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 18% 86%;
+    --input: 214 18% 86%;
+    --ring: 188 94% 38%;
+    --radius: 0.75rem;
+    --echon-cyan: 188 94% 38%;
+    --echon-violet: 262 70% 52%;
+  }
+
+  .dark {
     --background: 240 6% 2%;
     --foreground: 0 0% 98%;
     --card: 240 5% 6%;
@@ -23,7 +48,6 @@
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 188 94% 43%;
-    --radius: 0.75rem;
     --echon-cyan: 188 94% 43%;
     --echon-violet: 262 83% 58%;
   }
@@ -35,6 +59,20 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    background-image: radial-gradient(
+        1200px 600px at 10% -10%,
+        hsl(var(--echon-violet) / 0.12),
+        transparent 60%
+      ),
+      radial-gradient(
+        900px 500px at 90% 0%,
+        hsl(var(--echon-cyan) / 0.1),
+        transparent 55%
+      ),
+      linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+  }
+
+  .dark body {
     background-image: radial-gradient(
         1200px 600px at 10% -10%,
         hsl(var(--echon-violet) / 0.18),
@@ -57,3 +95,78 @@ html.echonx-zen body {
 html.echonx-zen .floating-listen-player {
   filter: none;
 }
+
+@keyframes explore-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-explore-wave {
+  transform-origin: bottom;
+  animation: explore-wave 1.1s ease-in-out infinite;
+}
+
+@keyframes ai-context-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-ai-context-shimmer {
+  animation: ai-context-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Native EchonX profile — next-gen intelligence UI (only /u/[username] for kind=native) */
+@keyframes echonx-avatar-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes echonx-neural-scan {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.35;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.55;
+  }
+}
+
+@keyframes echonx-rep-fill {
+  from {
+    width: 0;
+  }
+}
+
+.echonx-native-profile .echonx-avatar-pulse {
+  animation: echonx-avatar-pulse 3.5s ease-in-out infinite;
+}
+
+.echonx-native-profile .echonx-neural-scan {
+  animation: echonx-neural-scan 24s linear infinite;
+}
+
+.echonx-native-profile .echonx-rep-bar {
+  animation: echonx-rep-fill 1.2s ease-out forwards;
+}
+
+/* Lumos overrides for native profile — REVERT: remove line below + delete src/styles/native-profile-lumos.css */
+@import "../styles/native-profile-lumos.css";

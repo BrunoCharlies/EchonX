@@ -1,40 +1,111 @@
 import Link from "next/link";
+import { EchonXLogo } from "@/components/brand/echonx-logo";
 
-const footerLinks: { href: string; label: string; external?: boolean }[] = [
-  { href: "/explore", label: "Explore" },
+const PRODUCT_LINKS = [
+  { href: "/app/explore", label: "Explore" },
+  { href: "/app", label: "Audiopost" },
+  { href: "/pricing", label: "Pricing" },
+] as const;
+
+const COMPANY_LINKS = [
+  { href: "/about", label: "About" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
-  { href: "/faq", label: "FAQ" },
-  { href: "https://developer.x.com/", label: "X API", external: true },
-];
+] as const;
 
-export function SiteFooter() {
+const RESOURCE_LINKS = [
+  { href: "/faq", label: "FAQ" },
+  { href: "/support", label: "Support" },
+] as const;
+
+const LEGAL_LINKS = [
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+  { href: "/about", label: "About" },
+] as const;
+
+const SOCIAL = [{ href: "https://x.com/_Qubic_", label: "Qubic on X", letter: "𝕏" }] as const;
+
+export async function SiteFooter() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="border-t border-border/60 bg-background/80">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <div>
-          <p className="text-sm font-semibold tracking-tight">EchonX</p>
-          <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            Profile-first listening for people who want signal, not an infinite scroll. Built for the United States in
-            American English.
-          </p>
+    <footer className="border-t border-border/60 bg-background">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <EchonXLogo imageClassName="h-7" href="/" />
+            <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
+              Profile-first social listening. Hear creators, follow with intention, and grow communities around voice.
+            </p>
+            <p className="mt-6 text-xs text-muted-foreground">© {year} EchonX. All rights reserved.</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">Product</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              {PRODUCT_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-foreground">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">Company</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              {COMPANY_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-foreground">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">Resources</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              {RESOURCE_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-foreground">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">Follow us</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {SOCIAL.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  {s.letter}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          {footerLinks.map((link) =>
-            link.external ? (
-              <a key={link.href} href={link.href} className="hover:text-foreground" target="_blank" rel="noreferrer">
-                {link.label}
-              </a>
-            ) : (
-              <Link key={link.href} href={link.href} className="hover:text-foreground">
-                {link.label}
-              </Link>
-            ),
-          )}
+
+        <div className="mt-10 flex flex-wrap justify-end gap-x-6 gap-y-2 border-t border-border/40 pt-6 text-xs text-muted-foreground">
+          {LEGAL_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-foreground">
+              {link.label}
+            </Link>
+          ))}
         </div>
-      </div>
-      <div className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} EchonX. All rights reserved.
       </div>
     </footer>
   );

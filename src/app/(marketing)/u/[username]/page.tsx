@@ -1,197 +1,400 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
+
 import type { Metadata } from "next";
+
 import { auth } from "@/auth";
+
+import { loadPublicPostsByAuthorId, loadPublicProfileByUsername } from "@/lib/profiles/load-public-profile";
+
+import { loadNativeProfileIntelligence } from "@/lib/profiles/load-native-profile-intelligence";
+
+import { createServiceRoleClient } from "@/lib/supabase/service";
+
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ListenButton } from "@/components/app/listen-button";
-import { LikeButton } from "@/components/profile/like-button";
-import { PostsLive } from "@/components/profile/posts-live";
-import { WantToHearButton } from "@/components/profile/want-to-hear-button";
-import { PostComposer } from "@/components/app/post-composer";
+
+import { getServerDictionary } from "@/lib/i18n/server";
+
+import {
+
+  audiopostListenBlockedMessage,
+
+  canListenToAudiopostAuthorWithPlan,
+
+  loadUserEntitlement,
+
+} from "@/lib/billing/entitlements";
+
+import { isQubicOfficialProfile, officialChannelBadgeLabel } from "@/lib/curator/official-profiles";
+
+import { isCuratorProfile } from "@/components/profile/official-channel-badge";
+
+import { LegacyPublicProfileLayout } from "@/components/profile/legacy-public-profile-layout";
+
+import { NativeProfileExperience } from "@/components/profile/native-intelligence/native-profile-experience";
+
+import type { PostCommentItem } from "@/components/profile/post-comments";
+import { isAuthLinkedNativeProfile, shouldDisplayAsNativeProfile } from "@/lib/profiles/profile-kind";
+import { repairAuthLinkedProfileKind } from "@/lib/profiles/repair-profile-kind";
+
+
 
 type PageProps = { params: Promise<{ username: string }> };
 
+
+
+export const dynamic = "force-dynamic";
+
+
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+
   const { username } = await params;
+
   const handle = username.toLowerCase();
-  const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("username,display_name,bio").eq("username", handle).maybeSingle();
+
+  const data = await loadPublicProfileByUsername(handle);
+
   if (!data) return { title: "Profile" };
+
   return {
+
     title: `${data.display_name ?? `@${data.username}`} on EchonX`,
+
     description: data.bio ?? "Public EchonX profile",
+
   };
+
 }
+
+
 
 export default async function PublicProfilePage({ params }: PageProps) {
+
   const { username } = await params;
+
   const handle = username.toLowerCase();
+
+  const profile = await loadPublicProfileByUsername(handle);
+
+  if (!profile) {
+
+    notFound();
+
+  }
+
+
+
+  const posts = await loadPublicPostsByAuthorId(profile.id);
+
   const supabase = await createClient();
 
-  const { data: profile, error } = await supabase.from("profiles").select("*").eq("username", handle).maybeSingle();
-  if (error || !profile) {
-    notFound();
-  }
+  const serviceSupabase = createServiceRoleClient();
 
-  const { data: posts } = await supabase
-    .from("posts")
-    .select("*")
-    .eq("author_id", profile.id)
-    .order("created_at", { ascending: false });
+  const t = await getServerDictionary();
+
+
 
   const session = await auth();
+
   const viewerId = session?.user?.id;
 
+
+
   const postIds = posts?.map((p) => p.id) ?? [];
-  const liked = new Set<string>();
-  if (viewerId && postIds.length) {
-    const { data: likes } = await supabase
-      .from("post_likes")
-      .select("post_id")
+
+  let comments: PostCommentItem[] = [];
+
+  if (postIds.length) {
+
+    const { data: commentRows, error: commentsErr } = await supabase
+
+      .from("post_comments")
+
+      .select("id, post_id, parent_comment_id, body, like_count, created_at, profiles:author_profile_id(username, display_name, avatar_path)")
+
       .in("post_id", postIds)
-      .eq("liker_x_user_id", viewerId);
-    likes?.forEach((l) => liked.add(l.post_id));
+
+      .order("created_at", { ascending: true });
+
+    if (!commentsErr) {
+
+      comments = (commentRows ?? []).map((comment) => ({
+
+        id: comment.id,
+
+        post_id: comment.post_id,
+
+        parent_comment_id: comment.parent_comment_id,
+
+        body: comment.body,
+
+        like_count: comment.like_count,
+
+        created_at: comment.created_at,
+
+        profiles: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles,
+
+      }));
+
+    }
+
   }
+
+
+
+  const commentIds = comments.map((comment) => comment.id);
+
+  const likedComments = new Set<string>();
+
+  if (viewerId && commentIds.length) {
+
+    const { data: commentLikes } = await supabase
+
+      .from("post_comment_likes")
+
+      .select("comment_id")
+
+      .in("comment_id", commentIds)
+
+      .eq("liker_x_user_id", viewerId);
+
+    commentLikes?.forEach((like) => likedComments.add(like.comment_id));
+
+    comments = comments.map((comment) => ({ ...comment, viewer_liked: likedComments.has(comment.id) }));
+
+  }
+
+
+
+  const liked = new Set<string>();
+
+  if (viewerId && postIds.length) {
+
+    const { data: likes } = await supabase
+
+      .from("post_likes")
+
+      .select("post_id")
+
+      .in("post_id", postIds)
+
+      .eq("liker_x_user_id", viewerId);
+
+    likes?.forEach((l) => liked.add(l.post_id));
+
+  }
+
+
 
   let subscribed = false;
+
   let listeningSinceIso: string | null = null;
+
   if (viewerId) {
-    const { data: row } = await supabase
+
+    const { data: row } = await serviceSupabase
+
       .from("want_to_hear")
+
       .select("listening_since")
+
       .eq("listener_x_user_id", viewerId)
+
       .eq("target_profile_id", profile.id)
+
       .maybeSingle();
+
     subscribed = !!row;
+
     listeningSinceIso = row?.listening_since ?? null;
+
   }
 
+
+
   const listeningSince = listeningSinceIso ? new Date(listeningSinceIso) : null;
-  const isOwnProfile = !!viewerId && viewerId === profile.owner_x_user_id;
+
+
+
+  let canListenAudiopost = true;
+
+  let listenBlockedMessage: string | undefined;
+
+  if (viewerId) {
+
+    const entitlement = await loadUserEntitlement(serviceSupabase, viewerId);
+
+    canListenAudiopost = canListenToAudiopostAuthorWithPlan(
+
+      {
+
+        kind: profile.kind,
+
+        owner_x_user_id: profile.owner_x_user_id,
+
+        username: profile.username,
+
+      },
+
+      entitlement.effectivePlan,
+
+    );
+
+    if (!canListenAudiopost) {
+
+      listenBlockedMessage = audiopostListenBlockedMessage(entitlement.effectivePlan);
+
+    }
+
+  }
+
+
+
+  const isCurator = isCuratorProfile(profile.kind);
+
+  const isQubic = isQubicOfficialProfile({
+
+    owner_x_user_id: profile.owner_x_user_id,
+
+    username: profile.username,
+
+  });
+
+  const curatorLabel = officialChannelBadgeLabel({
+
+    owner_x_user_id: profile.owner_x_user_id,
+
+    username: profile.username,
+
+  });
+
+  const isOwnProfile =
+
+    !!viewerId && !isCurator && (viewerId === profile.id || viewerId === profile.owner_x_user_id);
+
   const callbackUrl = `/u/${profile.username}`;
 
+  const profileName = profile.display_name ?? `@${profile.username}`;
+
+  const postCount = posts?.length ?? 0;
+
+  const totalLikes = (posts ?? []).reduce((sum, post) => sum + (post.like_count ?? 0), 0);
+
+  const joinedAt = profile.created_at ? new Date(profile.created_at) : null;
+
+  const coverPath = typeof profile.cover_path === "string" ? profile.cover_path : null;
+
+  let profileKind = (profile.kind as string | null) ?? "native";
+  if (viewerId && isAuthLinkedNativeProfile(profile, viewerId) && profileKind === "external_x") {
+    const repaired = await repairAuthLinkedProfileKind(serviceSupabase, profile, viewerId);
+    if (repaired.repaired) profileKind = repaired.kind;
+  }
+
+  const profileForView = { ...profile, kind: profileKind };
+  const useNativeExperience = shouldDisplayAsNativeProfile(profileForView, viewerId);
+
+  if (useNativeExperience) {
+    const intelligence = await loadNativeProfileIntelligence({
+      profileId: profileForView.id,
+      ownerXUserId: profileForView.owner_x_user_id,
+      displayName: profileName,
+      bio: profileForView.bio,
+      role: (profileForView.role as string | null) ?? null,
+      createdAt: profileForView.created_at,
+      lastSeenAt: (profileForView.last_seen_at as string | null) ?? null,
+      postCount,
+      isOwnProfile,
+    });
+
+    return (
+      <NativeProfileExperience
+        profile={profileForView}
+
+        posts={posts}
+
+        comments={comments}
+
+        liked={liked}
+
+        intelligence={intelligence}
+
+        subscribed={subscribed}
+
+        listeningSince={listeningSince}
+
+        canListenAudiopost={canListenAudiopost}
+
+        listenBlockedMessage={listenBlockedMessage}
+
+        viewerId={viewerId}
+
+        isOwnProfile={isOwnProfile}
+
+        callbackUrl={callbackUrl}
+
+        profileName={profileName}
+
+        postCount={postCount}
+
+        coverPath={coverPath}
+
+        t={t}
+
+      />
+
+    );
+
+  }
+
+
+
   return (
-    <div className="space-y-8">
-      <PostsLive authorProfileId={profile.id} />
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex gap-4">
-          <div className="relative h-20 w-20 overflow-hidden rounded-2xl border border-border/70 bg-secondary">
-            {profile.avatar_path ? (
-              <Image src={profile.avatar_path} alt="" fill className="object-cover" sizes="80px" unoptimized />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No photo</div>
-            )}
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">{profile.display_name ?? `@${profile.username}`}</h1>
-              <Badge variant={profile.kind === "native" ? "default" : "secondary"}>
-                {profile.kind === "native" ? "Native profile" : "External X profile"}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">@{profile.username}</p>
-            {profile.bio ? <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{profile.bio}</p> : null}
-          </div>
-        </div>
+    <LegacyPublicProfileLayout
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {!isOwnProfile ? (
-            <WantToHearButton
-              profileId={profile.id}
-              initialSubscribed={subscribed}
-              isAuthenticated={!!viewerId}
-              signInCallbackUrl={callbackUrl}
-            />
-          ) : (
-            <Button size="lg" variant="outline" className="sm:min-w-[200px]" asChild>
-              <a href="/app/onboarding">Edit profile</a>
-            </Button>
-          )}
-          <Button size="lg" variant="outline" className="sm:min-w-[200px]" asChild>
-            <a href="/pricing">View plans</a>
-          </Button>
-        </div>
-      </div>
+      profile={profileForView}
 
-      <Separator />
+      posts={posts}
 
-      <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">Posts</h2>
-            <p className="text-xs text-muted-foreground">Public · moderated images · likes enabled</p>
-          </div>
-          {(posts ?? []).length === 0 ? (
-            <Card className="border-dashed">
-              <CardHeader>
-                <CardTitle className="text-base">No posts yet</CardTitle>
-                <CardDescription>When this creator publishes, you will see text and up to four images here.</CardDescription>
-              </CardHeader>
-            </Card>
-          ) : null}
+      comments={comments}
 
-          {(posts ?? []).map((post) => {
-            const createdAt = new Date(post.created_at);
-            const autoQueued = subscribed && listeningSince ? createdAt >= listeningSince : false;
-            return (
-              <Card key={post.id} className="border-border/80 bg-card/70">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-3">
-                    <CardTitle className="text-base font-medium">
-                      {createdAt.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] uppercase">
-                      {autoQueued ? "Auto-queue eligible" : "Manual listen"}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-sm text-foreground/90">{post.body}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {(post.image_paths as string[] | null)?.length ? (
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {(post.image_paths as string[]).map((src) => (
-                        <div key={src} className="relative aspect-square overflow-hidden rounded-md border border-border/60">
-                          <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 768px) 50vw, 120px" unoptimized />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <LikeButton
-                      postId={post.id}
-                      initialCount={post.like_count ?? 0}
-                      initialLiked={liked.has(post.id)}
-                      isAuthenticated={!!viewerId}
-                      signInCallbackUrl={callbackUrl}
-                    />
-                    <ListenButton text={post.body} autoQueued={autoQueued} />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+      liked={liked}
 
-        <div className="space-y-4">
-          {isOwnProfile ? <PostComposer /> : null}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Pro audio comments</CardTitle>
-              <CardDescription>Voice replies are gated to the Pro plan.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="secondary" className="w-full" disabled>
-                Record audio comment (Pro)
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+      subscribed={subscribed}
+
+      listeningSince={listeningSince}
+
+      canListenAudiopost={canListenAudiopost}
+
+      listenBlockedMessage={listenBlockedMessage}
+
+      viewerId={viewerId}
+
+      isOwnProfile={isOwnProfile}
+
+      isCurator={isCurator}
+
+      isQubic={isQubic}
+
+      curatorLabel={curatorLabel}
+
+      callbackUrl={callbackUrl}
+
+      profileName={profileName}
+
+      postCount={postCount}
+
+      totalLikes={totalLikes}
+
+      joinedAt={joinedAt}
+
+      coverPath={coverPath}
+
+      t={t}
+
+    />
+
   );
+
 }
+
