@@ -27,9 +27,9 @@ export const dictionaries = {
       profileSearchSeeAll: "See all results",
     },
     marketing: {
-      badge: "Profile-first · On-device audio",
-      headlineA: "Hear only what matters.",
-      headlineB: "",
+      badge: "Profile-first · On-device audiopost for Desktop!",
+      headlineA: "Hear Only What",
+      headlineB: "Matters On Your Desktop.",
       body:
         "Posts from the people you follow, read aloud in real time. No endless feed. No distractions. Just the content you actually want to hear while you drive, train, work, or relax.",
       emailSignIn: "Email sign-in",
@@ -67,7 +67,7 @@ export const dictionaries = {
     },
     app: {
       signedInAs: "Signed in as",
-      workspaceBadge: "Profile-first workspace",
+      workspaceBadge: "Profile-first · On-device audiopost for Desktop!",
       welcomeBack: "Welcome back",
       linkedPrefix: "Your X id",
       linkedSuffix:
@@ -214,9 +214,9 @@ export const dictionaries = {
       profileSearchSeeAll: "Ver todos os resultados",
     },
     marketing: {
-      badge: "Profile-first · áudio no dispositivo",
-      headlineA: "Ouça só o que importa.",
-      headlineB: "",
+      badge: "Profile-first · audiopost no dispositivo para Desktop!",
+      headlineA: "Ouça só o que",
+      headlineB: "importa em seu Desktop.",
       body:
         "Os posts das pessoas que você segue, lidos em voz alta, em tempo real. Sem rolar feed infinito. Sem distrações. Apenas o conteúdo que você realmente quer ouvir — enquanto dirige, malha, trabalha ou relaxa.",
       emailSignIn: "Login por e-mail",
@@ -253,7 +253,7 @@ export const dictionaries = {
     },
     app: {
       signedInAs: "Conectado como",
-      workspaceBadge: "Área profile-first",
+      workspaceBadge: "Profile-first · audiopost no dispositivo para Desktop!",
       welcomeBack: "Bem-vindo de volta",
       linkedPrefix: "Seu X id",
       linkedSuffix:
@@ -400,9 +400,9 @@ export const dictionaries = {
       profileSearchSeeAll: "Ver todos los resultados",
     },
     marketing: {
-      badge: "Profile-first · audio en el dispositivo",
-      headlineA: "Escucha solo lo que importa.",
-      headlineB: "",
+      badge: "Profile-first · audiopost en el dispositivo para Desktop!",
+      headlineA: "Escucha solo lo que",
+      headlineB: "importa en tu Desktop.",
       body:
         "Los posts de las personas que sigues, leídos en voz alta en tiempo real. Sin feed infinito. Sin distracciones. Solo el contenido que realmente quieres escuchar mientras conduces, entrenas, trabajas o descansas.",
       emailSignIn: "Inicio con email",
@@ -438,7 +438,7 @@ export const dictionaries = {
     },
     app: {
       signedInAs: "Conectado como",
-      workspaceBadge: "Espacio profile-first",
+      workspaceBadge: "Profile-first · audiopost en el dispositivo para Desktop!",
       welcomeBack: "Bienvenido de nuevo",
       linkedPrefix: "Tu X id",
       linkedSuffix: "está conectado. Completa tu perfil nativo de EchonX, publica imágenes e invita oyentes.",
@@ -584,9 +584,9 @@ export const dictionaries = {
       profileSearchSeeAll: "Voir tous les résultats",
     },
     marketing: {
-      badge: "Profile-first · audio sur l’appareil",
-      headlineA: "Écoutez seulement ce qui compte.",
-      headlineB: "",
+      badge: "Profile-first · audiopost sur l’appareil pour Desktop!",
+      headlineA: "Écoutez seulement ce qui",
+      headlineB: "compte sur votre Desktop.",
       body:
         "Les posts des personnes que vous suivez, lus à voix haute en temps réel. Pas de fil infini. Pas de distractions. Seulement le contenu que vous voulez vraiment écouter pendant que vous conduisez, faites du sport, travaillez ou vous détendez.",
       emailSignIn: "Connexion par e-mail",
@@ -622,7 +622,7 @@ export const dictionaries = {
     },
     app: {
       signedInAs: "Connecté en tant que",
-      workspaceBadge: "Espace profile-first",
+      workspaceBadge: "Profile-first · audiopost sur l’appareil pour Desktop!",
       welcomeBack: "Bon retour",
       linkedPrefix: "Votre X id",
       linkedSuffix: "est connecté. Complétez votre profil EchonX, publiez des images et invitez des auditeurs.",

@@ -59,12 +59,18 @@ export function AppSidebar({
       style={{ width: collapsed ? APP_SIDEBAR_WIDTH_COLLAPSED_PX : APP_SIDEBAR_WIDTH_EXPANDED_PX }}
     >
       <div
-        className={cn("flex shrink-0 items-center border-b border-border/60 px-4", collapsed && "justify-center px-2")}
-        style={{ height: APP_SHELL_HEADER_HEIGHT_PX }}
+        className={cn(
+          "flex shrink-0 flex-col justify-center border-b border-border/60 px-4",
+          collapsed && "items-center px-2",
+        )}
+        style={{ minHeight: APP_SHELL_HEADER_HEIGHT_PX }}
       >
         <Link href="/app/explore" className="inline-flex min-w-0" title={t.nav.explore}>
           <EchonXLogo size={collapsed ? "compact" : "header"} />
         </Link>
+        {!collapsed ? (
+          <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground/75">{t.marketing.badge}</p>
+        ) : null}
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 p-2.5">

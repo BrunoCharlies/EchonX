@@ -47,8 +47,8 @@ export const metadata: Metadata = {
       "Profile-first social listening with automatic moderation, PWA install, and premium on-device audio.",
   },
   icons: {
-    icon: [{ url: "/icon", type: "image/png" }],
-    apple: [{ url: "/apple-icon", type: "image/png" }],
+    icon: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
+    apple: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
   },
 };
 

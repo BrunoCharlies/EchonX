@@ -66,7 +66,7 @@ export default function HomePage() {
               <motion.h1 variants={fadeUp} className="max-w-xl text-balance text-5xl font-semibold tracking-[-0.055em] sm:text-6xl lg:text-7xl">
                 {t.marketing.headlineA}{" "}
                 <span className="text-primary drop-shadow-[0_0_18px_hsl(var(--primary)/0.35)]">
-                  {t.marketing.headlineB || "matters."}
+                  {t.marketing.headlineB}
                 </span>
               </motion.h1>
               <motion.p variants={fadeUp} className="mt-6 max-w-lg text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
