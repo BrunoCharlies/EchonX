@@ -1,4 +1,0 @@
-{
-  "/api/presence/heartbeat/route": "app/api/presence/heartbeat/route.js",
-  "/api/listening/queue/route": "app/api/listening/queue/route.js"
-}

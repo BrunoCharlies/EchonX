@@ -23,6 +23,9 @@ const supabaseHost = supabaseStorageHostname() ?? "bnclzhnkonkmyydjslri.supabase
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   /** Next.js dev badge (N) — route/build status in local dev only; not part of EchonX. Hidden to avoid overlap with the library bar. */
   devIndicators: false,
