@@ -269,7 +269,7 @@ export function AdminDashboard({
 
       <AdminSection
         title="EchonX Reading Recommendation"
-        description="PDF e capa fixos no topo da biblioteca Audiopost para todos os utilizadores."
+        description="PDF ou TXT e capa fixos no topo da biblioteca Audiopost para todos os utilizadores."
       >
         <div className="space-y-4">
           {recommendation && !recommendationEditing ? (
@@ -290,8 +290,11 @@ export function AdminDashboard({
                 {recommendation.description ? (
                   <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{recommendation.description}</p>
                 ) : null}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Document: {recommendation.documentType === "text" ? "TXT (plain text)" : "PDF"}
+                </p>
                 {recommendation.updatedAt ? (
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Updated {new Date(recommendation.updatedAt).toLocaleString()}
                   </p>
                 ) : null}
@@ -351,10 +354,16 @@ export function AdminDashboard({
                   <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 5 MB.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="recommendation-pdf">PDF document</Label>
-                  <Input id="recommendation-pdf" name="pdf" type="file" accept="application/pdf,.pdf" />
+                  <Label htmlFor="recommendation-document">Document (PDF or TXT)</Label>
+                  <Input
+                    id="recommendation-document"
+                    name="document"
+                    type="file"
+                    accept="application/pdf,.pdf,text/plain,.txt"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    PDF up to 25 MB. Required the first time; optional for metadata-only updates.
+                    PDF or UTF-8 .txt up to 25 MB. TXT is recommended for iPhone listening (same as Gutenberg
+                    books). Required the first time; optional when updating title or cover only.
                   </p>
                 </div>
               </div>

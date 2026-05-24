@@ -6,9 +6,17 @@ import { createServiceRoleClient } from "@/lib/supabase/service";
 
 const BUCKET = "recommended-documents";
 const SLOT = "echonx_pick";
-const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE_BYTES = 25 * 1024 * 1024;
 const MAX_COVER_SIZE_BYTES = 5 * 1024 * 1024;
 const COVER_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function isTxtFile(file: File) {
+  return file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
+}
 
 export type RecommendedReadingItem = {
   slot: string;
@@ -90,7 +98,7 @@ export async function saveEchonXReadingRecommendation(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const author = String(formData.get("author") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const pdf = formFile(formData, "pdf");
+  const document = formFile(formData, "document") ?? formFile(formData, "pdf");
   const cover = formFile(formData, "cover");
 
   if (!title) return { ok: false, error: "Add a title for the recommendation." };
@@ -98,30 +106,36 @@ export async function saveEchonXReadingRecommendation(formData: FormData) {
   const supabase = createServiceRoleClient();
   const { data: current } = await supabase
     .from("app_recommendations")
-    .select("document_path, document_url, cover_path, cover_url")
+    .select("document_path, document_url, document_type, cover_path, cover_url")
     .eq("slot", SLOT)
     .maybeSingle();
 
   let documentPath = (current?.document_path as string | null) ?? null;
   let documentUrl = (current?.document_url as string | null) ?? null;
+  let documentType = (current?.document_type as "pdf" | "text" | null) ?? "pdf";
   let coverPath = (current?.cover_path as string | null) ?? null;
   let coverUrl = (current?.cover_url as string | null) ?? null;
 
-  if (!pdf && !documentPath) {
-    return { ok: false, error: "Upload a PDF for the first EchonX recommendation." };
+  if (!document && !documentPath) {
+    return { ok: false, error: "Upload a PDF or TXT file for the first EchonX recommendation." };
   }
 
-  if (pdf) {
-    if (pdf.type !== "application/pdf" && !pdf.name.toLowerCase().endsWith(".pdf")) {
-      return { ok: false, error: "The recommendation document must be a PDF." };
+  if (document) {
+    const asPdf = isPdfFile(document);
+    const asTxt = isTxtFile(document);
+    if (!asPdf && !asTxt) {
+      return { ok: false, error: "The recommendation document must be a PDF or plain text (.txt) file." };
     }
-    if (pdf.size > MAX_PDF_SIZE_BYTES) {
-      return { ok: false, error: "The PDF is too large. Use a file up to 25 MB." };
+    if (document.size > MAX_DOCUMENT_SIZE_BYTES) {
+      return { ok: false, error: "The document is too large. Use a file up to 25 MB." };
     }
-    const bytes = new Uint8Array(await pdf.arrayBuffer());
-    documentPath = `echonx-pick/${Date.now()}-${normalizeFileName(pdf.name || "recommendation.pdf")}`;
+
+    const bytes = new Uint8Array(await document.arrayBuffer());
+    const defaultName = asTxt ? "recommendation.txt" : "recommendation.pdf";
+    documentPath = `echonx-pick/${Date.now()}-${normalizeFileName(document.name || defaultName)}`;
+    documentType = asTxt ? "text" : "pdf";
     const { error } = await supabase.storage.from(BUCKET).upload(documentPath, bytes, {
-      contentType: "application/pdf",
+      contentType: asTxt ? "text/plain; charset=utf-8" : "application/pdf",
       upsert: true,
     });
     if (error) return { ok: false, error: error.message };
@@ -154,7 +168,7 @@ export async function saveEchonXReadingRecommendation(formData: FormData) {
     cover_path: coverPath,
     document_url: documentUrl,
     document_path: documentPath,
-    document_type: "pdf",
+    document_type: documentType,
     active: true,
     updated_at: new Date().toISOString(),
   });
