@@ -135,7 +135,7 @@ export async function saveEchonXReadingRecommendation(formData: FormData) {
     documentPath = `echonx-pick/${Date.now()}-${normalizeFileName(document.name || defaultName)}`;
     documentType = asTxt ? "text" : "pdf";
     const { error } = await supabase.storage.from(BUCKET).upload(documentPath, bytes, {
-      contentType: asTxt ? "text/plain; charset=utf-8" : "application/pdf",
+      contentType: asTxt ? "text/plain" : "application/pdf",
       upsert: true,
     });
     if (error) return { ok: false, error: error.message };
