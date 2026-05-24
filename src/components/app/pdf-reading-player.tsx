@@ -20,7 +20,7 @@ import {
   libraryQuotaErrorMessage,
 } from "@/lib/voice/library-voice-session";
 import { formatLibraryQuotaShort } from "@/lib/billing/library-quota-policy";
-import { primeLibraryPlaybackForUserGesture } from "@/lib/voice/ios-speech-unlock";
+import { isAppleMobileBrowser, primeLibraryPlaybackForUserGesture } from "@/lib/voice/ios-speech-unlock";
 import type { VoiceEngine } from "@/lib/voice/voice-engine";
 import { cn } from "@/lib/utils";
 
@@ -131,12 +131,18 @@ function detectSegmentLanguage(text: string) {
 }
 
 function isMobileAppleDevice() {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return isAppleMobileBrowser();
+}
+
+async function loadPdfJsModule() {
+  if (isMobileAppleDevice()) {
+    return import("pdfjs-dist/legacy/build/pdf.mjs");
+  }
+  return import("pdfjs-dist");
 }
 
 async function extractPdfSegmentsFromBuffer(buffer: ArrayBuffer): Promise<PdfSegment[]> {
-  const pdfjs = await import("pdfjs-dist");
+  const pdfjs = await loadPdfJsModule();
   ensurePdfWorkerConfigured(pdfjs);
 
   const data = new Uint8Array(buffer);
@@ -239,6 +245,7 @@ export const PdfReadingPlayer = forwardRef<
   const segmentsRef = useRef<PdfSegment[]>([]);
   const activeSourceIdRef = useRef<string | null>(null);
   const pendingPlayRef = useRef(false);
+  const playbackPausedRef = useRef(false);
   const runIdRef = useRef(0);
 
   function setSegmentsState(next: PdfSegment[]) {
@@ -283,6 +290,7 @@ export const PdfReadingPlayer = forwardRef<
   async function stopReading() {
     runIdRef.current += 1;
     pendingPlayRef.current = false;
+    playbackPausedRef.current = false;
     releaseVoicePlayback("pdf-reader");
     const activeEngine = engineRef.current;
     if (activeEngine) {
@@ -293,7 +301,7 @@ export const PdfReadingPlayer = forwardRef<
 
   async function startReading(index = currentIndex) {
     const sourceId = activeSourceIdRef.current;
-    if (!sourceId) return;
+    if (!sourceId || playbackPausedRef.current) return;
 
     const readableIndex = findFirstReadableIndex(segmentsRef.current, index);
     if (readableIndex < 0) {
@@ -319,11 +327,18 @@ export const PdfReadingPlayer = forwardRef<
     setCurrentIndex(index);
     setReaderState("playing");
     setError(null);
+    playbackPausedRef.current = false;
 
     let voiceStatus: Awaited<ReturnType<typeof getLibraryVoiceEngine>>["status"] | null = null;
     try {
       const resolved = await getEngine();
-      if (runId !== runIdRef.current || activeSourceIdRef.current !== sourceId) return;
+      if (
+        playbackPausedRef.current ||
+        runId !== runIdRef.current ||
+        activeSourceIdRef.current !== sourceId
+      ) {
+        return;
+      }
       voiceStatus = resolved.status;
       const lang =
         libraryCtx && libraryBarLanguageRef.current !== "auto"
@@ -344,7 +359,13 @@ export const PdfReadingPlayer = forwardRef<
         libraryReading: true,
       });
     } catch (err) {
-      if (runId !== runIdRef.current || activeSourceIdRef.current !== sourceId) return;
+      if (
+        playbackPausedRef.current ||
+        runId !== runIdRef.current ||
+        activeSourceIdRef.current !== sourceId
+      ) {
+        return;
+      }
       const message = err instanceof Error ? err.message : "Playback failed.";
       setError(message);
       setReaderState("ready");
@@ -362,7 +383,14 @@ export const PdfReadingPlayer = forwardRef<
       });
     }
 
-    if (runId !== runIdRef.current || activeSourceIdRef.current !== sourceId) return;
+    if (
+      playbackPausedRef.current ||
+      runId !== runIdRef.current ||
+      activeSourceIdRef.current !== sourceId
+    ) {
+      return;
+    }
+
     const nextIndex = index + 1;
     if (nextIndex < segmentsRef.current.length) {
       await startReading(nextIndex);
@@ -433,17 +461,22 @@ export const PdfReadingPlayer = forwardRef<
     if (!segmentsRef.current.length) return;
 
     if (readerState === "playing") {
-      await engineRef.current?.pause();
+      playbackPausedRef.current = true;
+      runIdRef.current += 1;
+      pendingPlayRef.current = false;
+      await engineRef.current?.stop();
       setReaderState("paused");
+      onPlaybackUpdateRef.current?.({ readerState: "paused" });
       return;
     }
 
     if (readerState === "paused") {
-      await engineRef.current?.resume();
-      setReaderState("playing");
+      playbackPausedRef.current = false;
+      await startReading(currentIndex);
       return;
     }
 
+    playbackPausedRef.current = false;
     await startReading(readerState === "finished" ? 0 : currentIndex);
   }
 

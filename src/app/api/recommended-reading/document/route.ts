@@ -52,10 +52,12 @@ export async function GET(request: Request) {
 
   const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
 
+  const isPdf = contentType.includes("pdf");
+
   return new NextResponse(upstream.body, {
     headers: {
       "content-type": contentType,
-      "cache-control": "public, max-age=86400",
+      "cache-control": isPdf ? "private, no-store" : "public, max-age=86400",
     },
   });
 }

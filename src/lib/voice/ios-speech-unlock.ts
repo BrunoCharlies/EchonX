@@ -7,6 +7,26 @@ export function isAppleMobileBrowser() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+/** Parsed from Mobile Safari UA, e.g. iPhone OS 16_7 → 16. */
+export function iosMajorVersion() {
+  if (typeof navigator === "undefined") return null;
+  const match = navigator.userAgent.match(/OS (\d+)[._]/i);
+  if (!match) return null;
+  const major = Number(match[1]);
+  return Number.isFinite(major) ? major : null;
+}
+
+/** iPhone 8 Plus era devices (iOS ≤16) often speak faster than utterance.rate. */
+export function isLegacyIosSafari() {
+  const major = iosMajorVersion();
+  return major !== null && major <= 16;
+}
+
+export function librarySpeechRateForDevice(requestedRate: number) {
+  if (!isLegacyIosSafari()) return requestedRate;
+  return Math.min(1, Math.max(0.5, requestedRate * 0.72));
+}
+
 export function primeWebSpeechForUserGesture() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
@@ -20,12 +40,7 @@ export function primeWebSpeechForUserGesture() {
   utterance.rate = 1;
   utterance.lang = "en-US";
   synth.speak(utterance);
-  window.setTimeout(() => {
-    if (synth.speaking || synth.pending) {
-      synth.cancel();
-    }
-    synth.resume();
-  }, 32);
+  /** Do not call synth.cancel() here — on slow iPhones it cancels the real book utterance next. */
 }
 
 /** Unlocks HTMLAudioElement.play() on iOS when used after Fish TTS fetch. */

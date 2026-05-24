@@ -1,5 +1,5 @@
 import { prepareLibrarySegmentForSpeech, prepareMirroredPostForSpeech } from "@/lib/voice/speech-text";
-import { isAppleMobileBrowser } from "@/lib/voice/ios-speech-unlock";
+import { isAppleMobileBrowser, librarySpeechRateForDevice } from "@/lib/voice/ios-speech-unlock";
 import {
   isCompatibleSpeechVoiceLang,
   isEuropeanPortugueseVoice,
@@ -195,7 +195,10 @@ export async function createVoiceEngine(): Promise<VoiceEngine> {
         const utterance = new SpeechSynthesisUtterance(chunk);
         utterance.lang = lang;
         if (selectedVoice) utterance.voice = selectedVoice;
-        utterance.rate = clampRate(options?.rate, lang);
+        const requestedRate = options?.libraryReading
+          ? librarySpeechRateForDevice(options?.rate ?? 1)
+          : (options?.rate ?? 1);
+        utterance.rate = clampRate(requestedRate, lang);
         utterance.volume = clampVolume(options?.volume ?? outputVolume);
         await new Promise<void>((resolve, reject) => {
           let settled = false;
