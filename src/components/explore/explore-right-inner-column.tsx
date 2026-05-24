@@ -23,6 +23,7 @@ type Props = {
   recentActivity: ExploreActivityItem[];
   labels: ExploreRightInnerLabels;
   locale: string;
+  className?: string;
 };
 
 function formatRelative(iso: string, locale: string) {
@@ -35,7 +36,7 @@ function formatRelative(iso: string, locale: string) {
 }
 
 /** Coluna estreita junto ao feed: Feed Signals + Atividade recente (mockup col. 3). */
-export function ExploreRightInnerColumn({ feedSignals, recentActivity, labels, locale }: Props) {
+export function ExploreRightInnerColumn({ feedSignals, recentActivity, labels, locale, className }: Props) {
   const metrics = [
     { label: labels.creatorsPosting, value: feedSignals.creatorsPosting, icon: Users },
     { label: labels.nativePosts, value: feedSignals.nativePosts, icon: Radio },
@@ -44,7 +45,12 @@ export function ExploreRightInnerColumn({ feedSignals, recentActivity, labels, l
   ];
 
   return (
-    <aside className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-[76px] xl:max-h-[calc(100dvh-88px)] xl:self-start xl:overflow-y-auto">
+    <aside
+      className={cn(
+        "flex min-w-0 flex-col gap-3 max-xl:overflow-visible xl:sticky xl:top-[76px] xl:max-h-[calc(100dvh-88px)] xl:self-start xl:overflow-y-auto xl:overscroll-y-auto",
+        className,
+      )}
+    >
       <div className={exploreCardClass("p-3")}>
         <p className={cn(exploreSectionTitleClass(), "flex items-center gap-1 text-[10px]")}>
           <Sparkles className="h-3 w-3 shrink-0 text-primary" />

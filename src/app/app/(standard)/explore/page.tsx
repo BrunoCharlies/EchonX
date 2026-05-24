@@ -158,7 +158,7 @@ export default async function AppExplorePage() {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-72px)]">
+    <div className="min-h-0 xl:min-h-[calc(100dvh-72px)]">
       <ExplorePageShell
         profile={profile}
         posts={posts}

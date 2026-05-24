@@ -175,17 +175,26 @@ export function ExplorePageShell({
     <ExploreFeedLive onNewPost={onRealtimePost} />
     <div
       className={[
-        "mx-auto grid min-h-[calc(100dvh-72px)] w-full max-w-[1520px] gap-3",
-        "grid-cols-1",
-        /* 4 colunas: esquerda | feed (largura limitada) | signals (estreita) | direita */
+        "mx-auto grid w-full max-w-[1520px] gap-3",
+        "grid-cols-1 max-xl:items-start max-xl:touch-pan-y",
+        /* Mobile/tablet: feed first, then side columns — single document scroll (§44 fase 3) */
+        "max-xl:[-webkit-overflow-scrolling:touch]",
+        /* 4 colunas: esquerda | feed | signals | direita (desktop ≥1280px) */
+        "xl:min-h-[calc(100dvh-72px)]",
         "xl:grid-cols-[minmax(220px,252px)_minmax(360px,500px)_minmax(168px,192px)_minmax(240px,272px)]",
         "xl:justify-center xl:gap-3.5",
         "2xl:grid-cols-[260px_520px_200px_280px] 2xl:gap-4",
       ].join(" ")}
     >
-      <ExploreLeftSidebar profile={profile} stats={stats} followedActive={followedActive} labels={leftLabels} />
+      <ExploreLeftSidebar
+        className="max-xl:order-2"
+        profile={profile}
+        stats={stats}
+        followedActive={followedActive}
+        labels={leftLabels}
+      />
 
-      <main className="flex min-w-0 w-full max-w-[500px] flex-col gap-3 justify-self-center xl:max-w-none xl:justify-self-stretch">
+      <main className="flex min-w-0 w-full max-w-[500px] flex-col gap-3 justify-self-center max-xl:order-1 xl:max-w-none xl:justify-self-stretch">
         <ExploreFeedToolbar
           filter={filter}
           search={search}
@@ -249,6 +258,7 @@ export function ExplorePageShell({
       </main>
 
       <ExploreRightInnerColumn
+        className="max-xl:order-3"
         feedSignals={feedSignals}
         recentActivity={recentActivity}
         labels={rightInnerLabels}
@@ -256,6 +266,7 @@ export function ExplorePageShell({
       />
 
       <ExploreRightOuterColumn
+        className="max-xl:order-4"
         listenBlockedMessage={listenBlockedMessage}
         nowListeningCount={nowListeningCount}
         topAudioposts={topAudioposts}

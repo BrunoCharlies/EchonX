@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AudiopostPlayButton } from "@/components/explore/audiopost-play-button";
 import { ExploreWaveform } from "@/components/explore/explore-waveform";
 import { exploreCardClass, exploreInsetClass, exploreSectionTitleClass } from "@/components/explore/explore-ui";
+import { cn } from "@/lib/utils";
 import { WantToHearButton } from "@/components/profile/want-to-hear-button";
 import type { ExploreRecommendation, ExploreTrendingCreator } from "@/lib/explore/load-explore-extras";
 import type { TopAudiopostItem } from "@/lib/explore/load-top-audioposts";
@@ -37,6 +38,7 @@ type Props = {
   viewerId: string | undefined;
   labels: ExploreRightOuterLabels;
   listenBlockedMessage: string;
+  className?: string;
 };
 
 function formatListens(n: number) {
@@ -54,11 +56,17 @@ export function ExploreRightOuterColumn({
   viewerId,
   labels,
   listenBlockedMessage,
+  className,
 }: Props) {
   const liveItems = topAudioposts.slice(0, 3);
 
   return (
-    <aside className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-[76px] xl:max-h-[calc(100dvh-88px)] xl:self-start xl:overflow-y-auto">
+    <aside
+      className={cn(
+        "flex min-w-0 flex-col gap-3 max-xl:overflow-visible xl:sticky xl:top-[76px] xl:max-h-[calc(100dvh-88px)] xl:self-start xl:overflow-y-auto xl:overscroll-y-auto",
+        className,
+      )}
+    >
       <div className={exploreCardClass("p-3.5")}>
         <div className="flex items-center justify-between gap-2">
           <p className={exploreSectionTitleClass()}>{labels.nowListening}</p>

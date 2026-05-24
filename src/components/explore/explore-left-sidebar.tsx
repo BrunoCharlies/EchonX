@@ -43,9 +43,10 @@ type Props = {
   stats: ExploreSidebarStats;
   followedActive: ExploreFollowedActive[];
   labels: ExploreLeftLabels;
+  className?: string;
 };
 
-export function ExploreLeftSidebar({ profile, stats, followedActive, labels }: Props) {
+export function ExploreLeftSidebar({ profile, stats, followedActive, labels, className }: Props) {
   const [minutesToday, setMinutesToday] = useState(0);
 
   useEffect(() => {
@@ -60,7 +61,12 @@ export function ExploreLeftSidebar({ profile, stats, followedActive, labels }: P
   const statusLabel = isListening ? labels.statusListening : labels.statusOnline;
 
   return (
-    <aside className="flex min-h-0 min-w-0 flex-col xl:sticky xl:top-[76px] xl:h-[calc(100dvh-88px)] xl:max-h-[calc(100dvh-88px)] xl:self-start">
+    <aside
+      className={cn(
+        "flex min-w-0 flex-col max-xl:w-full xl:sticky xl:top-[76px] xl:h-[calc(100dvh-88px)] xl:min-h-0 xl:max-h-[calc(100dvh-88px)] xl:self-start",
+        className,
+      )}
+    >
       {/* Card quadrado fixo — não rola com a coluna */}
       <div className="z-10 shrink-0 pb-3">
         <Link
@@ -111,7 +117,7 @@ export function ExploreLeftSidebar({ profile, stats, followedActive, labels }: P
         </Link>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+      <div className="space-y-3 max-xl:overflow-visible max-xl:overscroll-auto xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-y-auto xl:pr-0.5 xl:[-webkit-overflow-scrolling:touch]">
       <div className={exploreCardClass("p-4")}>
         <p className={exploreSectionTitleClass()}>{labels.quickStats}</p>
         <ul className="mt-3 space-y-2.5 text-sm">

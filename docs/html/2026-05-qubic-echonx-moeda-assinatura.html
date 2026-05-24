@@ -2839,7 +2839,7 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
           <tr><td>0</td><td>Breakpoints + hook</td><td>✅</td></tr>
           <tr><td>1</td><td>App shell — sidebar <code>lg:flex</code>, menu ☰, drawer</td><td>✅</td></tr>
           <tr><td>2</td><td>Marketing + auth + <code>/profile</code></td><td>✅</td></tr>
-          <tr><td>3</td><td><code>/app/explore</code></td><td>Pendente</td></tr>
+          <tr><td>3</td><td><code>/app/explore</code></td><td>✅ scroll mobile (§44.8)</td></tr>
           <tr><td>4</td><td><code>/u/[username]</code></td><td>Pendente</td></tr>
           <tr><td>5</td><td>Audiopost stack simples (&lt; lg)</td><td>✅ v2 (correções scroll/duplicação)</td></tr>
           <tr><td>6</td><td>Settings / billing</td><td>Pendente</td></tr>
@@ -2913,6 +2913,17 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
         </tbody>
       </table>
       <p><strong>Ficheiros novos:</strong> <code>app-shell-header-client.tsx</code>, <code>app-shell-header-guest-drawer.tsx</code>.</p>
+
+      <h3 id="layout-responsivo-fase-3-explore-maio-2026">44.8 Fase 3 — <code>/app/explore</code> scroll mobile (Maio 2026)</h3>
+      <p>
+        Âncora: <code>#layout-responsivo-fase-3-explore-maio-2026</code>. Em viewport &lt; 1280 px (<code>max-xl</code>):
+        scroll vertical único na página (sem <code>overscroll-y-contain</code> nas colunas laterais); feed em
+        <code>order-1</code>; sidebars abaixo. Desktop 4 colunas (≥ 1280 px) inalterado — <code>min-h</code> e scroll
+        independente só em <code>xl:</code>.
+      </p>
+      <p><strong>Ficheiros:</strong> <code>explore-page-shell.tsx</code>, <code>explore-left-sidebar.tsx</code>,
+        <code>explore-right-inner-column.tsx</code>, <code>explore-right-outer-column.tsx</code>,
+        <code>app/(standard)/explore/layout.tsx</code>, <code>explore/page.tsx</code>.</p>
 
       <h3 id="audiopost-mobile-correcoes-maio-2026">44.6 Audiopost mobile — correções (Maio 2026)</h3>
       <p>
