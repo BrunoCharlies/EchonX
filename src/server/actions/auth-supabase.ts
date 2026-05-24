@@ -96,7 +96,7 @@ export async function signUpWithPasswordAction(
   if (!needsEmailConfirmation && !(await waitForProfile(data.user.id))) {
     return {
       ok: false,
-      error: "Account created but profile setup failed. Apply the Supabase auth profile trigger migration and try signing in.",
+      error: "Account created but profile setup failed. Try signing in again in a moment or contact support.",
     };
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import imageCompression from "browser-image-compression";
+import { isAllowedProfileImageFile } from "@/lib/uploads/profile-images";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -12,16 +13,20 @@ const baseOptions = {
 };
 
 export async function compressImageForUpload(file: File) {
-  const webpOptions = { ...baseOptions, fileType: "image/webp" } as Parameters<typeof imageCompression>[1] & {
+  if (!isAllowedProfileImageFile(file)) {
+    throw new Error("Only JPEG or PNG images are accepted.");
+  }
+
+  const jpegOptions = { ...baseOptions, fileType: "image/jpeg" } as Parameters<typeof imageCompression>[1] & {
     fileType?: string;
   };
 
-  let compressed = await imageCompression(file, webpOptions);
+  let compressed = await imageCompression(file, jpegOptions);
   if (compressed.size > MAX_BYTES) {
-    compressed = await imageCompression(file, { ...webpOptions, maxSizeMB: 1.2, initialQuality: 0.72 });
+    compressed = await imageCompression(file, { ...jpegOptions, maxSizeMB: 1.2, initialQuality: 0.72 });
   }
   if (compressed.size > MAX_BYTES) {
-    compressed = await imageCompression(file, { ...webpOptions, maxSizeMB: 0.8, initialQuality: 0.58 });
+    compressed = await imageCompression(file, { ...jpegOptions, maxSizeMB: 0.8, initialQuality: 0.58 });
   }
   return compressed;
 }

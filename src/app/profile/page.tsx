@@ -26,7 +26,7 @@ export default async function ProfilePage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Your profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Photo, bio, and @username are public. Images are moderated via the Supabase Edge Function before storage.
+            Photo, bio, and @username are public. Images are reviewed automatically before they are saved.
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>

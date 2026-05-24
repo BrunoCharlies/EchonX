@@ -13,7 +13,7 @@ const items = [
   },
   {
     q: "How does X login work?",
-    a: "We use OAuth 2.0 with PKCE, the industry standard for public clients. You authorize once with X, and EchonX issues a secure session tied to Supabase.",
+    a: "We use OAuth 2.0 with PKCE, the industry standard for public clients. You authorize once with X, and EchonX issues a secure session on our servers.",
   },
   {
     q: "What is the difference between native and external profiles?",

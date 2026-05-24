@@ -130,7 +130,7 @@ export function OfficialChannelAdmin({ initialChannel }: { initialChannel: Offic
             @{channel.username}
           </Link>
           . Platform updates will use a separate <span className="font-mono text-[11px]">echonx</span> channel later. Headlines
-          get a generated preview card (no Supabase storage). Optional RSS photo hotlink when the feed provides one. Links in
+          get a generated preview card (no cloud storage). Optional RSS photo hotlink when the feed provides one. Links in
           post; audio skips URLs (max 220 chars). Queue: new posts after follow only.
         </CardDescription>
         <div className="admin-channel-card__actions">

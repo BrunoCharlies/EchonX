@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   try {
     supabase = createServiceRoleClient();
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Supabase service role is not configured";
+    const message = err instanceof Error ? err.message : "Server billing storage is not configured";
     console.error("[stripe webhook]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

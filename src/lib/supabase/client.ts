@@ -5,7 +5,7 @@ export function createClient() {
   const url = getSupabaseUrl();
   const key = getSupabaseAnonKey();
   if (!url || !key) {
-    throw new Error("Missing Supabase URL or anon key (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY)");
+    throw new Error("App database is not configured. Please try again later.");
   }
   return createBrowserClient(url, key);
 }

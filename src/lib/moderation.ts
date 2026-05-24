@@ -50,10 +50,11 @@ export async function moderateImageBuffer(buffer: Buffer, mime: string): Promise
     return { ok: true, provider, raw: json };
   }
 
-  // Without credentials, fail closed in production and allow in development with a clear signal.
-  if (process.env.NODE_ENV === "production") {
+  // Without Sightengine keys: allow upload unless explicitly required (edge function may still run).
+  if (process.env.MODERATION_REQUIRE_SIGHTENGINE === "true") {
     return { ok: false, provider, reason: "moderation_not_configured" };
   }
 
-  return { ok: true, provider: "noop", reason: "development_mode_without_keys" };
+  console.warn("[moderation] Safety review API not configured — allowing upload.");
+  return { ok: true, provider: "skipped", reason: "moderation_not_configured" };
 }

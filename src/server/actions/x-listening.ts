@@ -49,7 +49,7 @@ function getErrorMessage(error: unknown, fallback: string) {
       message.includes("profiles") &&
       message.includes("profiles_id_fkey")
     ) {
-      return "Your Supabase schema still links every profile to auth.users. Apply migration 00009_allow_external_profiles_without_auth_user.sql, then try again.";
+      return "Your database is still configured for legacy profiles. Contact support so we can update your account setup.";
     }
     if (message) return `${message}${code}${details}`;
   }

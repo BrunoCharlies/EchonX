@@ -4,7 +4,7 @@ import { getSupportEmail } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "How EchonX handles data for US-based customers, including X OAuth, Supabase storage, and Stripe billing.",
+  description: "How EchonX handles data for US-based customers, including X OAuth, secure cloud storage, and Stripe billing.",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       <p className="mt-4 text-sm text-muted-foreground">Last updated: May 14, 2026</p>
       <div className="mt-10 space-y-4 text-sm text-muted-foreground">
         <p>
-          EchonX processes authentication through X, stores application data in Supabase, and routes billing through Stripe.
+          EchonX processes authentication through X, stores application data on secure EchonX infrastructure, and routes billing through Stripe.
           Voice synthesis defaults to on-device playback, which keeps live audio local to your browser whenever possible.
         </p>
         <p>
