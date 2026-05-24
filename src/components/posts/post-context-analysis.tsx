@@ -7,6 +7,7 @@ import {
   CONTEXT_CONFIDENCE_LABELS,
   type ContextConfidenceLevel,
 } from "@/lib/ai/context-analysis-shared";
+import { formatUserFacingDisplay, resolveUserFacingClientError } from "@/lib/errors/user-facing";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -72,7 +73,7 @@ export function PostContextAnalysis({
         redirectUrl?: string;
       };
 
-      if (res.status === 429 && data.code === "daily_limit") {
+      if (res.status === 429 && data.code === "EAI002") {
         setExpanded(false);
         router.push(data.redirectUrl ?? "/pricing#ai-plan");
         return;
@@ -80,14 +81,8 @@ export function PostContextAnalysis({
 
       if (!res.ok) {
         setExpanded(false);
-        if (data.code === "openai_unconfigured") {
-          setError(
-            data.error ??
-              "AI Context is not available: OPENAI_API_KEY is missing on the server. Ask an admin to add it in Vercel (or .env.local locally) and redeploy.",
-          );
-          return;
-        }
-        setError(data.error ?? "Could not analyze context for this post.");
+        const { message, code } = resolveUserFacingClientError(data);
+        setError(formatUserFacingDisplay(code, message));
         return;
       }
 
@@ -96,7 +91,8 @@ export function PostContextAnalysis({
       setExpanded(true);
     } catch {
       setExpanded(false);
-      setError("Network error. Try again.");
+      const { message, code } = resolveUserFacingClientError(null);
+      setError(formatUserFacingDisplay(code, message));
     } finally {
       setLoading(false);
     }
