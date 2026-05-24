@@ -181,8 +181,8 @@ export function NativeProfileExperience({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="echonx-signal-badge rounded-2xl border border-cyan-500/25 bg-black/50 px-4 py-3 backdrop-blur-xl">
+            <div className="flex w-full min-w-0 items-stretch gap-2 sm:w-auto sm:gap-3">
+              <div className="echonx-signal-badge flex min-h-[108px] min-w-0 flex-1 flex-col justify-between rounded-2xl border border-cyan-500/25 bg-black/50 px-3 py-3 backdrop-blur-xl sm:min-w-[120px] sm:flex-none sm:px-4">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-cyan-500/80">Signal level</p>
                 <p className="mt-0.5 font-mono text-2xl font-bold text-cyan-300">{signalLabel}</p>
                 <div className="mt-2 flex h-4 items-end gap-px">
@@ -195,50 +195,54 @@ export function NativeProfileExperience({
                   ))}
                 </div>
               </div>
-              <div className="echonx-context-ring relative flex h-[88px] w-[88px] items-center justify-center rounded-2xl border border-violet-500/25 bg-black/50 backdrop-blur-xl">
-                <svg className="absolute inset-2 -rotate-90" viewBox="0 0 36 36" aria-hidden>
-                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(63 63 70 / 0.5)" strokeWidth="2" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.5"
-                    fill="none"
-                    stroke="url(#ctxGrad)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeDasharray={`${intelligence.contextScore} 100`}
-                  />
-                  <defs>
-                    <linearGradient id="ctxGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="hsl(262 83% 58%)" />
-                      <stop offset="100%" stopColor="hsl(188 94% 43%)" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="text-center">
-                  <p className="text-[8px] uppercase tracking-wider text-violet-300/70">Context</p>
-                  <p className="text-xl font-bold text-violet-100">{intelligence.contextScore}</p>
+              <div className="echonx-context-ring flex min-h-[108px] w-[108px] shrink-0 items-center justify-center rounded-2xl border border-violet-500/25 bg-black/50 p-2 backdrop-blur-xl">
+                <div className="relative aspect-square size-[80px]">
+                  <svg className="absolute inset-0 -rotate-90" viewBox="0 0 36 36" aria-hidden>
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(63 63 70 / 0.5)" strokeWidth="2" />
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15.5"
+                      fill="none"
+                      stroke="url(#ctxGrad)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeDasharray={`${intelligence.contextScore} 100`}
+                    />
+                    <defs>
+                      <linearGradient id="ctxGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="hsl(262 83% 58%)" />
+                        <stop offset="100%" stopColor="hsl(188 94% 43%)" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <p className="text-[8px] uppercase tracking-wider text-violet-300/70">Context</p>
+                    <p className="text-xl font-bold text-violet-100">{intelligence.contextScore}</p>
+                  </div>
                 </div>
               </div>
-              {!isOwnProfile ? (
-                <WantToHearButton
-                  profileId={profile.id}
-                  initialSubscribed={subscribed}
-                  isAuthenticated={!!viewerId}
-                  signInCallbackUrl={callbackUrl}
-                  labelFollow={t.explore.follow}
-                  labelFollowing={t.explore.following}
-                  className="min-w-[140px]"
-                />
-              ) : (
-                <Button
-                  asChild
-                  className="border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25"
-                  variant="outline"
-                >
-                  <Link href="/profile">Edit identity</Link>
-                </Button>
-              )}
+              <div className="flex min-h-[108px] shrink-0 items-center">
+                {!isOwnProfile ? (
+                  <WantToHearButton
+                    profileId={profile.id}
+                    initialSubscribed={subscribed}
+                    isAuthenticated={!!viewerId}
+                    signInCallbackUrl={callbackUrl}
+                    labelFollow={t.explore.follow}
+                    labelFollowing={t.explore.following}
+                    className="min-w-[120px] sm:min-w-[140px]"
+                  />
+                ) : (
+                  <Button
+                    asChild
+                    className="h-full min-h-[44px] border-cyan-500/40 bg-cyan-500/15 px-4 text-cyan-100 hover:bg-cyan-500/25"
+                    variant="outline"
+                  >
+                    <Link href="/profile">Edit identity</Link>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
