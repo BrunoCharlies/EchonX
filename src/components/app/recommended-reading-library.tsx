@@ -5,6 +5,7 @@ import { BookOpen, ChevronRight, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PdfReadingSource } from "@/components/app/pdf-reading-player";
+import { librarySourceProxyUrl } from "@/lib/library/library-source-url";
 import type { RecommendedReadingItem } from "@/server/actions/recommended-reading";
 import { cn } from "@/lib/utils";
 
@@ -66,17 +67,13 @@ const PUBLIC_BOOKS: LibraryBook[] = [
   },
 ];
 
-function proxySource(url: string) {
-  return `/api/recommended-reading/source?url=${encodeURIComponent(url)}`;
-}
-
 function fixedToSource(item: RecommendedReadingItem): PdfReadingSource {
   return {
     id: `echonx-${item.slot}-${item.updatedAt ?? "current"}`,
     title: item.title,
     author: item.author,
     sourceType: item.documentType,
-    sourceUrl: item.documentUrl,
+    sourceUrl: librarySourceProxyUrl(item.documentUrl),
   };
 }
 
@@ -86,7 +83,7 @@ function bookToSource(book: LibraryBook): PdfReadingSource {
     title: book.title,
     author: book.author,
     sourceType: "text",
-    sourceUrl: proxySource(book.sourceUrl),
+    sourceUrl: librarySourceProxyUrl(book.sourceUrl),
   };
 }
 

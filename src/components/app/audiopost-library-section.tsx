@@ -5,6 +5,7 @@ import { Clock, Search, X } from "lucide-react";
 import { useAudiopostLibrary } from "@/contexts/audiopost-library-context";
 import type { PdfReadingSource } from "@/components/app/pdf-reading-player";
 import { audiopostCardClass, audiopostCardPadding, audiopostSectionLabelClass } from "@/components/app/audiopost-premium";
+import { librarySourceProxyUrl } from "@/lib/library/library-source-url";
 import type { RecommendedReadingItem } from "@/server/actions/recommended-reading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,17 +78,23 @@ const MOCK_BOOKS: LibraryDisplayBook[] = [
   },
 ];
 
-function proxySource(url: string) {
-  return `/api/recommended-reading/source?url=${encodeURIComponent(url)}`;
-}
-
 function bookToSource(book: Pick<LibraryDisplayBook, "id" | "title" | "author" | "sourceUrl">): PdfReadingSource {
   return {
     id: book.id,
     title: book.title,
     author: book.author,
     sourceType: "text",
-    sourceUrl: proxySource(book.sourceUrl),
+    sourceUrl: librarySourceProxyUrl(book.sourceUrl),
+  };
+}
+
+function echonxRecommendationToSource(item: RecommendedReadingItem): PdfReadingSource {
+  return {
+    id: `echonx-${item.slot}`,
+    title: item.title,
+    author: item.author ?? "EchonX",
+    sourceType: item.documentType,
+    sourceUrl: librarySourceProxyUrl(item.documentUrl),
   };
 }
 
@@ -263,16 +270,7 @@ export function AudiopostLibrarySection({
             {catalogBooks.map((book) => {
               const source =
                 book.id.startsWith("echonx-") && fixedRecommendation
-                  ? {
-                      id: book.id,
-                      title: book.title,
-                      author: book.author,
-                      sourceType: fixedRecommendation.documentType,
-                      sourceUrl:
-                        fixedRecommendation.documentType === "text"
-                          ? proxySource(book.sourceUrl)
-                          : book.sourceUrl,
-                    }
+                  ? echonxRecommendationToSource(fixedRecommendation)
                   : bookToSource(book);
               const selected = selectedSource?.id === source.id;
               return (

@@ -107,12 +107,24 @@ function detectSegmentLanguage(text: string) {
   return scores[0]?.score > 1 ? scores[0].lang : "en-US";
 }
 
+function isMobileAppleDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 async function extractPdfSegmentsFromBuffer(buffer: ArrayBuffer): Promise<PdfSegment[]> {
   const pdfjs = await import("pdfjs-dist");
   ensurePdfWorkerConfigured(pdfjs);
 
   const data = new Uint8Array(buffer);
-  const documentTask = pdfjs.getDocument({ data });
+  const mobileApple = isMobileAppleDevice();
+  const documentTask = pdfjs.getDocument({
+    data,
+    /** Same-origin proxied PDFs + iOS Safari: avoid worker fetch to remote URLs. */
+    useWorkerFetch: false,
+    useSystemFonts: true,
+    ...(mobileApple ? { useWasm: false } : {}),
+  });
   const pdf = await documentTask.promise;
   const segments: PdfSegment[] = [];
 
@@ -149,10 +161,24 @@ async function loadReadingSource(source: PdfReadingSource, signal?: AbortSignal)
   }
 
   if (source.sourceType === "pdf") {
-    return extractPdfSegmentsFromBuffer(await response.arrayBuffer());
+    const buffer = await response.arrayBuffer();
+    if (!buffer.byteLength) {
+      throw new Error("The PDF file is empty.");
+    }
+    const segments = await extractPdfSegmentsFromBuffer(buffer);
+    if (!segments.length) {
+      throw new Error(
+        "No readable text in this PDF. If this is a scan, try another title or open on desktop.",
+      );
+    }
+    return segments;
   }
 
-  return textToSegments(await response.text());
+  const segments = textToSegments(await response.text());
+  if (!segments.length) {
+    throw new Error("No readable text was found in this book.");
+  }
+  return segments;
 }
 
 export type PdfReadingPlayerHandle = {
@@ -244,7 +270,12 @@ export const PdfReadingPlayer = forwardRef<
   async function startReading(index = currentIndex) {
     const sourceId = activeSourceIdRef.current;
     const segment = segmentsRef.current[index];
-    if (!segment || !sourceId) return;
+    if (!segment?.text?.trim() || !sourceId) {
+      setError("Nothing to read in this section. Try another book or skip forward.");
+      setReaderState("ready");
+      onPlaybackUpdateRef.current?.({ error: "Nothing to read in this section.", readerState: "ready" });
+      return;
+    }
 
     await claimVoicePlayback("pdf-reader");
     const runId = runIdRef.current + 1;
@@ -452,14 +483,14 @@ export const PdfReadingPlayer = forwardRef<
       try {
         const nextSegments = await loadReadingSource(source, abortController.signal);
         if (!alive || activeSourceIdRef.current !== source.id) return;
-        if (!nextSegments.length) {
-          setReaderState("empty");
-          setError("No readable text was found in this book.");
-          return;
-        }
-
         setSegmentsState(nextSegments);
         setReaderState("ready");
+        onPlaybackUpdateRef.current?.({
+          readerState: "ready",
+          canControl: true,
+          segmentCount: nextSegments.length,
+          error: null,
+        });
         if (pendingPlayRef.current) {
           pendingPlayRef.current = false;
           await startReading(0);
@@ -467,9 +498,17 @@ export const PdfReadingPlayer = forwardRef<
       } catch (err) {
         if (!alive || activeSourceIdRef.current !== source.id) return;
         if (err instanceof Error && err.name === "AbortError") return;
+        const message =
+          err instanceof Error ? err.message : "We could not load this book. Pick another title or try again.";
         console.error(err);
         setReaderState("empty");
-        setError("We could not load this book. Pick another title or try again.");
+        setError(message);
+        onPlaybackUpdateRef.current?.({
+          readerState: "empty",
+          canControl: false,
+          error: message,
+          preview: null,
+        });
       }
     }
 
