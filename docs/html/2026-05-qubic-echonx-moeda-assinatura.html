@@ -2804,8 +2804,183 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
       <p><strong>Ficheiros:</strong> <code>lib/profiles/profile-kind.ts</code>, <code>lib/profiles/repair-profile-kind.ts</code>, <code>server/actions/profile.ts</code>, <code>server/actions/x-listening.ts</code>.</p>
     </section>
 
+    <section id="layout-responsivo-breakpoints-maio-2026">
+      <h2>44. Layout responsivo — breakpoints e regras (Maio 2026)</h2>
+      <p>
+        Experiência no <strong>browser do telemóvel/tablet</strong> (sem app instalável). O layout Desktop (≥ 1024 px) permanece
+        <strong>congelado</strong>. Âncora: <code>#layout-responsivo-breakpoints-maio-2026</code>.
+      </p>
+
+      <h3>44.1 Breakpoints oficiais</h3>
+      <table>
+        <thead><tr><th>Faixa</th><th>Largura</th><th>Tailwind</th><th>Regra</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Desktop</strong></td><td>≥ 1024 px</td><td><code>lg:</code> e acima</td><td>Layout atual — não alterar estrutura</td></tr>
+          <tr><td><strong>Tablet</strong></td><td>640 – 1023 px</td><td><code>md:</code> … <code>max-lg:</code></td><td>Shell drawer + grids simplificados</td></tr>
+          <tr><td><strong>Telemóvel</strong></td><td>&lt; 640 px</td><td><code>max-sm:</code> onde necessário</td><td>Mais compacto; alvos de toque ≥ 44 px</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Constantes: <code>src/lib/layout/breakpoints.ts</code> · Hook: <code>src/hooks/use-layout-breakpoint.ts</code>
+        (<code>DESKTOP_MIN_PX = 1024</code>, <code>PHONE_MAX_PX = 639</code>).
+      </p>
+
+      <h3>44.2 Como a largura é “identificada”</h3>
+      <ul>
+        <li>O browser reporta a largura do viewport; o CSS aplica media queries — <strong>não</strong> há pasta separada só para mobile no servidor.</li>
+        <li>Regras novas usam <code>max-lg:</code> / <code>lg:hidden</code> para não mudar o Desktop.</li>
+        <li>JavaScript (<code>useLayoutBreakpoint</code>) só para drawer, troca de componente, etc.</li>
+      </ul>
+
+      <h3>44.3 Implementação por fases</h3>
+      <table>
+        <thead><tr><th>Fase</th><th>Área</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Breakpoints + hook</td><td>✅</td></tr>
+          <tr><td>1</td><td>App shell — sidebar <code>lg:flex</code>, menu ☰, drawer</td><td>✅</td></tr>
+          <tr><td>2</td><td>Marketing + auth + <code>/profile</code></td><td>Pendente</td></tr>
+          <tr><td>3</td><td><code>/app/explore</code></td><td>Pendente</td></tr>
+          <tr><td>4</td><td><code>/u/[username]</code></td><td>Pendente</td></tr>
+          <tr><td>5</td><td>Audiopost stack simples (&lt; lg)</td><td>✅ v2 (correções scroll/duplicação)</td></tr>
+          <tr><td>6</td><td>Settings / billing</td><td>Pendente</td></tr>
+        </tbody>
+      </table>
+
+      <h3>44.4 Audiopost mobile/tablet (stack simples)</h3>
+      <p>
+        Em largura &lt; 1024 px: <code>AudiopostDashboardMobile</code> (<code>lg:hidden</code>) com scroll vertical num único painel
+        (<code>flex-1 min-h-0 overflow-y-auto</code>). O grid desktop <code>AudiopostDashboardInner</code> usa
+        <code>hidden lg:flex</code> — <strong>nunca</strong> os dois ao mesmo tempo no viewport (ver §44.6).
+      </p>
+      <ol>
+        <li>Now playing — <code>AudiopostNowPlayingShell</code> (sem lingueta sobre Library no mobile)</li>
+        <li>Perfis X — <code>AudiopostXProfilesPanel</code></li>
+        <li>Library — <code>AudiopostLibrarySection</code></li>
+        <li>Upload PDF — card completo <code>AudiopostPdfUploadPanel layout="stack"</code> (zona de drop + Choose PDF + recentes)</li>
+      </ol>
+      <p>
+        Barra inferior fixa: <code>LibraryBottomBar</code> com faixa de quota compacta (pill) + play/volume em
+        <code>max-lg</code>; alturas em <code>audiopost-bottom-bar-layout.ts</code>
+        (<code>AUDIOPOST_BOTTOM_BAR_MOBILE_*</code>). O conteúdo do stack tem
+        <code>padding-bottom</code> = reserva da barra + <code>safe-area-inset-bottom</code> para o último card não ficar tapado.
+      </p>
+      <p><strong>Ficheiros principais:</strong>
+        <code>audiopost-dashboard.tsx</code>,
+        <code>audiopost-dashboard-mobile.tsx</code>,
+        <code>audiopost-now-playing-shell.tsx</code>,
+        <code>audiopost-pdf-upload-panel.tsx</code>,
+        <code>library-bottom-bar.tsx</code>,
+        <code>app-mobile-nav-drawer.tsx</code>,
+        <code>app-sidebar-nav.tsx</code>.
+      </p>
+
+      <h3 id="audiopost-mobile-correcoes-maio-2026">44.6 Audiopost mobile — correções (Maio 2026)</h3>
+      <p>
+        Testes em mockup virtual / DevTools (~390–433 px) expuseram bugs reais (não artefacto só do simulador).
+        Âncora: <code>#audiopost-mobile-correcoes-maio-2026</code>.
+      </p>
+      <table>
+        <thead><tr><th>Sintoma</th><th>Causa</th><th>Correção</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Library / Now playing “duplicados” ao rolar</td>
+            <td><code>AudiopostDashboardMobile</code> e <code>AudiopostDashboardInner</code> montados em paralelo sem <code>hidden lg:flex</code> no desktop</td>
+            <td>Grid desktop oculto abaixo de 1024 px; wrapper <code>flex min-h-0 flex-1 flex-col</code> no provider</td>
+          </tr>
+          <tr>
+            <td>Card “Browser voice · unlimited…” sobreposto e confuso</td>
+            <td>Duas <code>LibraryBottomBar</code> fixas + layout desktop da quota</td>
+            <td>Uma barra; variante mobile com pill discreto e controlos compactos</td>
+          </tr>
+          <tr>
+            <td>Visor Now playing vazio mais abaixo</td>
+            <td>Segunda instância do card (grid) sem altura útil</td>
+            <td>Resolvido com ocultação do grid; shell mobile com <code>min-h-[240px]</code> em <code>max-lg</code></td>
+          </tr>
+          <tr>
+            <td>Upload PDF sumia / não rolava até ao fim</td>
+            <td>Altura <code>calc(100dvh…)</code> no scroll + <code>&lt;details&gt;</code> fechado + <code>h-full</code> no painel PDF sem pai com altura</td>
+            <td>Scroll <code>flex-1</code>; card PDF sempre visível com <code>layout="stack"</code>; <code>padding-bottom</code> na stack; Library/X com <code>max-lg:h-auto</code></td>
+          </tr>
+          <tr>
+            <td>Lingueta de opções sobre Library no mobile</td>
+            <td><code>linguetaAnchorRef</code> apontava à secção Library na pilha vertical</td>
+            <td>Mobile não passa <code>linguetaAnchorRef</code> (lingueta só no desktop)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Verificação:</strong> em 390 px, uma única Library, Now playing estável no topo da pilha, scroll até ao card Upload PDF acima da barra fixa; em ≥ 1024 px, grid Audiopost inalterado.</p>
+
+      <h3>44.5 Checklist PR (não prejudicar Desktop)</h3>
+      <ul>
+        <li>Testar 1440 px — deve ficar igual ao antes do PR</li>
+        <li>Testar 768 px e 390 px</li>
+        <li>Não substituir <code>lg:grid-cols-N</code> por colunas únicas sem prefixo <code>lg:</code></li>
+      </ul>
+    </section>
+
+    <section id="producao-perfil-favicon-desktop-maio-2026">
+      <h2>45. Produção — perfil, favicon, Desktop e deploy (Maio 2026)</h2>
+      <p>
+        Melhorias para lançamento em <code>echonx.app</code> e experiência de edição de perfil.
+        Âncora: <code>#producao-perfil-favicon-desktop-maio-2026</code>. Evolução após <a href="#backup-v1-11">Backupv1.11</a>.
+      </p>
+
+      <h3>45.1 Edição de perfil e imagens</h3>
+      <ul>
+        <li>Foto e capa: apenas <strong>JPEG ou PNG</strong> (até 2 MB); WebP e outros formatos rejeitados com mensagem clara</li>
+        <li>Compressão no browser para JPEG antes do upload (<code>lib/image-compress.client.ts</code>)</li>
+        <li>Erros de gravação sem nomes de fornecedor na UI (<code>lib/errors/user-facing.ts</code>)</li>
+        <li>Texto de ajuda na página de perfil: revisão automática de imagens (sem referência a stack interna)</li>
+        <li>Moderação: em produção pode exigir Sightengine; variável <code>MODERATION_REQUIRE_SIGHTENGINE</code> em <code>.env.example</code></li>
+      </ul>
+      <p><strong>Ficheiros:</strong> <code>server/actions/profile.ts</code>, <code>components/profile/profile-edit-form.tsx</code>, <code>lib/uploads/profile-images.ts</code>.</p>
+
+      <h3>45.2 Username (@handle)</h3>
+      <ul>
+        <li>Campo com <code>@</code> visual suave; utilizador pode digitar <code>@bcharles</code> — só o handle é guardado</li>
+        <li>Regra: <code>a-z</code> e <code>0-9</code>, 3–24 caracteres (<code>lib/profiles/username.ts</code>)</li>
+        <li>Validação no cliente e no servidor com a mesma mensagem</li>
+      </ul>
+
+      <h3>45.3 Favicon, logomarca e copy Desktop</h3>
+      <ul>
+        <li>Favicon: símbolo X ciano em fundo preto — <code>public/brand/echonx-favicon.png</code>, <code>src/app/icon.png</code>, PWA <code>public/icons/icon-192.png</code> / <code>icon-512.png</code></li>
+        <li>Removidos ícones gerados com letra “E” (<code>icon.tsx</code>, rotas dinâmicas <code>/icons/icon-192</code>)</li>
+        <li>Homepage: <strong>Hear Only What Matters On Your Desktop.</strong> (Title Case)</li>
+        <li>Badge: <em>Profile-first · On-device audiopost for Desktop!</em> (homepage + sidebar do app)</li>
+        <li>Logomarca oficial no header e footer (<code>components/brand/</code>)</li>
+      </ul>
+      <p><strong>Commits:</strong> <code>1750282</code> (logo), <code>86eb1e8</code> (perfil), <code>6a79051</code> (favicon/copy).</p>
+
+      <h3>45.4 Deploy Vercel</h3>
+      <ul>
+        <li>Falha de build: <code>.next-dev/types/validator.ts</code> versionado referia rotas de ícones antigas</li>
+        <li>Correção: <code>/.next-dev/</code> no <code>.gitignore</code>; remoção do cache do Git; <code>eslint.ignoreDuringBuilds: true</code></li>
+        <li>Commit: <code>45ead70</code></li>
+      </ul>
+    </section>
+
+    <section id="backup-v1-12">
+      <h2>46. Backupv1.12 — ponto de restauração (atual)</h2>
+      <div class="callout ok">
+        <strong>ID do backup:</strong> <code>Backupv1.12</code> · 2026-05-24 · Perfil + favicon + Desktop + fix Vercel · âmbito <a href="#backup-v1-11">Backupv1.11</a>.
+      </div>
+      <table>
+        <thead><tr><th>Artefacto</th><th>Caminho</th></tr></thead>
+        <tbody>
+          <tr><td>ZIP (559 ficheiros)</td><td><code>C:\Users\55479\Desktop\EchonX-backups\Backupv1.12\EchonX-full-source.zip</code></td></tr>
+          <tr><td>Espelho</td><td><code>...\Backupv1.12\EchonX-mirror\</code></td></tr>
+          <tr><td>Doc</td><td><code>docs/BACKUP-Backupv1.12.md</code> · <code>BACKUP-PHASE.txt</code></td></tr>
+        </tbody>
+      </table>
+      <pre><code>.\scripts\create-phase-backup.ps1 -PhaseId Backupv1.12</code></pre>
+      <p>Âncora: <code>#backup-v1-12</code> · Melhorias: <code>#producao-perfil-favicon-desktop-maio-2026</code>.</p>
+      <p>Backup anterior: <a href="#backup-v1-11">Backupv1.11</a>.</p>
+    </section>
+
     <section id="backup-v1-11">
-      <h2>43. Backupv1.11 — ponto de restauração (atual)</h2>
+      <h2>43. Backupv1.11 — ponto anterior</h2>
       <div class="callout ok">
         <strong>ID do backup:</strong> <code>Backupv1.11</code> · 2026-05-24 · Perfil intelligence + Lumos profile + fix kind + âmbito <a href="#backup-v1-10">Backupv1.10</a>.
       </div>

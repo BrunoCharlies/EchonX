@@ -229,7 +229,11 @@ export function AudiopostLibrarySection({
   return (
     <div
       id="library"
-      className={cn(audiopostCardClass(), audiopostCardPadding, "flex h-full min-h-0 flex-col overflow-hidden scroll-mt-4")}
+      className={cn(
+        audiopostCardClass(),
+        audiopostCardPadding,
+        "flex h-full min-h-0 flex-col overflow-hidden scroll-mt-4 max-lg:h-auto max-lg:min-h-[220px]",
+      )}
     >
       <p className={cn(audiopostSectionLabelClass, "shrink-0 text-muted-foreground")}>Library</p>
 

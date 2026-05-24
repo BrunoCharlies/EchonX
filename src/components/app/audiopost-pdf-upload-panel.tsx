@@ -13,7 +13,15 @@ import {
 } from "@/lib/audiopost/recent-pdf-history";
 import { cn } from "@/lib/utils";
 
-export function AudiopostPdfUploadPanel({ onFileSelected }: { onFileSelected: (file: File) => void }) {
+export function AudiopostPdfUploadPanel({
+  onFileSelected,
+  /** Mobile Audiopost stack: natural height instead of grid cell flex fill. */
+  layout = "grid",
+}: {
+  onFileSelected: (file: File) => void;
+  layout?: "grid" | "stack";
+}) {
+  const isStack = layout === "stack";
   const inputRef = useRef<HTMLInputElement>(null);
   const [recent, setRecent] = useState<RecentPdfEntry[]>([]);
 
@@ -70,9 +78,19 @@ export function AudiopostPdfUploadPanel({ onFileSelected }: { onFileSelected: (f
         />
       </div>
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          "mt-2 flex flex-col",
+          isStack ? "min-h-[88px]" : "min-h-0 flex-1 overflow-hidden",
+        )}
+      >
         <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recent uploads</p>
-        <div className="mt-1.5 min-h-0 flex-1 overflow-y-auto">
+        <div
+          className={cn(
+            "mt-1.5 overflow-y-auto",
+            isStack ? "max-h-[min(140px,22dvh)] min-h-[72px]" : "min-h-0 flex-1",
+          )}
+        >
           {hasHistory ? (
             <ul className="space-y-1">
               {recent.map((file) => (

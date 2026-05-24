@@ -7,12 +7,19 @@ import { audiopostCardClass, audiopostCardPadding, audiopostSectionLabelClass } 
 import { cn } from "@/lib/utils";
 
 type Props = {
-  linguetaAnchorRef: RefObject<HTMLDivElement | null>;
+  /** Desktop: lingueta overlays library panel. Omit on mobile stack. */
+  linguetaAnchorRef?: RefObject<HTMLDivElement | null>;
 };
 
 export function AudiopostNowPlayingShell({ linguetaAnchorRef }: Props) {
   return (
-    <div className={cn(audiopostCardClass(), audiopostCardPadding, "flex h-full min-h-0 w-full flex-col")}>
+    <div
+      className={cn(
+        audiopostCardClass(),
+        audiopostCardPadding,
+        "flex w-full flex-col lg:h-full lg:min-h-0 max-lg:min-h-[240px]",
+      )}
+    >
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.06] pb-3">
         <p className={audiopostSectionLabelClass}>Now playing</p>
         <span className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide text-primary">
@@ -23,7 +30,7 @@ export function AudiopostNowPlayingShell({ linguetaAnchorRef }: Props) {
           Live · synced
         </span>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain max-lg:overflow-visible">
         <FloatingListenPlayer
           variant="audiopost-card"
           linguetaAnchorRef={linguetaAnchorRef}

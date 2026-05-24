@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { AudiopostDashboardMobile } from "@/components/app/audiopost-dashboard-mobile";
 import { AudiopostLibraryProvider, useAudiopostLibrary } from "@/contexts/audiopost-library-context";
 import { AudiopostListeningMapCard } from "@/components/app/audiopost-listening-map-card";
 import { AudiopostLibrarySection } from "@/components/app/audiopost-library-section";
@@ -24,7 +25,7 @@ function AudiopostDashboardInner({ fixedRecommendation }: { fixedRecommendation:
 
   return (
     <div
-      className="audiopost-dashboard relative flex min-h-0 flex-col overflow-hidden bg-[#050a12]"
+      className="audiopost-dashboard relative hidden min-h-0 flex-col overflow-hidden bg-[#050a12] lg:flex"
       style={{ height: DASHBOARD_HEIGHT }}
     >
       <div
@@ -85,7 +86,10 @@ export function AudiopostDashboard({
 }) {
   return (
     <AudiopostLibraryProvider>
-      <AudiopostDashboardInner fixedRecommendation={fixedRecommendation} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <AudiopostDashboardMobile fixedRecommendation={fixedRecommendation} />
+        <AudiopostDashboardInner fixedRecommendation={fixedRecommendation} />
+      </div>
     </AudiopostLibraryProvider>
   );
 }

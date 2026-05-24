@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { AppMobileNavDrawer } from "@/components/app/app-mobile-nav-drawer";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopBar } from "@/components/app/app-top-bar";
 import {
@@ -25,6 +26,7 @@ export function AppShell({
   audiopostDark?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div
@@ -40,10 +42,21 @@ export function AppShell({
         publicProfileHref={publicProfileHref}
         planLabel={planBadge}
       />
+      <AppMobileNavDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        planLabel={planBadge}
+        publicProfileHref={publicProfileHref}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <AppTopBar displayName={displayName} planBadge={planBadge} avatarUrl={avatarUrl} />
+        <AppTopBar
+          displayName={displayName}
+          planBadge={planBadge}
+          avatarUrl={avatarUrl}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden max-lg:[--app-sidebar-width:0px]"
           style={{
             ["--app-sidebar-width" as string]: collapsed
               ? `${APP_SIDEBAR_WIDTH_COLLAPSED_PX}px`

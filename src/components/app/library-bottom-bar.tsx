@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import {
   AUDIOPOST_BOTTOM_BAR_HEIGHT_PX,
   AUDIOPOST_BOTTOM_BAR_LIFT_PX,
+  AUDIOPOST_BOTTOM_BAR_MOBILE_HEIGHT_PX,
 } from "@/components/app/audiopost-bottom-bar-layout";
 import {
   isLibraryReadingLanguage,
@@ -88,14 +89,73 @@ export function LibraryBottomBar({
 
   return (
     <div
-      className="fixed left-[var(--app-sidebar-width,232px)] right-0 z-40 border-t border-white/[0.06] bg-[rgba(10,14,20,0.92)] backdrop-blur-[16px]"
+      className={cn(
+        "fixed z-40 border-t border-white/[0.06] bg-[rgba(10,14,20,0.92)] backdrop-blur-[16px]",
+        "left-0 right-0 max-lg:pb-[env(safe-area-inset-bottom)]",
+        "lg:left-[var(--app-sidebar-width,232px)] lg:right-0",
+      )}
       style={{ bottom: AUDIOPOST_BOTTOM_BAR_LIFT_PX }}
     >
-      <div className="mx-auto max-w-[1400px] px-5 pt-1.5">
+      {/* Mobile: slim quota pill + compact transport */}
+      <div className="mx-auto max-w-[1400px] px-3 pt-1.5 lg:hidden">
+        <div className="mb-1.5 flex justify-center">
+          <div className="max-w-[min(100%,20rem)] rounded-full border border-white/[0.08] bg-black/35 px-3 py-1 shadow-sm backdrop-blur-sm">
+            <LibraryQuotaStrip className="truncate text-center text-[9px] leading-snug" />
+          </div>
+        </div>
+        <div
+          className="flex items-center justify-center gap-3 pb-1"
+          style={{ height: AUDIOPOST_BOTTOM_BAR_MOBILE_HEIGHT_PX }}
+        >
+          <Button
+            type="button"
+            size="icon"
+            className={cn(audiopostPlayBtnClass, "h-10 w-10 shrink-0")}
+            aria-label={isPlaying ? "Pause library reading" : "Play library reading"}
+            disabled={!playback.canControl && playback.readerState === "empty"}
+            onClick={onPlayPause}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+          </Button>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5" role="group" aria-label="Library player volume">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={toggleMute}
+              aria-label={isMuted ? "Unmute library player" : "Mute library player"}
+            >
+              {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </Button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={volumePercent}
+              onChange={(event) => {
+                const next = Number(event.target.value) / 100;
+                if (next > 0) volumeBeforeMuteRef.current = next;
+                setLibraryBarVolume(next);
+              }}
+              className="h-1 min-w-0 flex-1 cursor-pointer accent-primary"
+              aria-label="Library player volume"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={volumePercent}
+              aria-valuetext={`${volumePercent}%`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: full bar */}
+      <div className="mx-auto hidden max-w-[1400px] px-5 pt-1.5 lg:block">
         <LibraryQuotaStrip />
       </div>
       <div
-        className="mx-auto flex max-w-[1400px] items-center gap-4 px-5 pb-1"
+        className="mx-auto hidden max-w-[1400px] items-center gap-4 px-5 pb-1 lg:flex"
         style={{ height: AUDIOPOST_BOTTOM_BAR_HEIGHT_PX }}
       >
         <div className="flex min-w-0 max-w-[260px] flex-1 items-center gap-3">

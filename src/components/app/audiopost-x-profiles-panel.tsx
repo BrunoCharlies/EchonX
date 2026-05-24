@@ -95,7 +95,7 @@ export function AudiopostXProfilesPanel() {
       className={cn(
         audiopostCardClass(),
         audiopostCardPadding,
-        "flex h-full min-h-0 flex-col overflow-hidden scroll-mt-4 transition-[box-shadow,ring-color]",
+        "flex h-full min-h-0 flex-col overflow-hidden scroll-mt-4 transition-[box-shadow,ring-color] max-lg:h-auto max-lg:min-h-[180px]",
         highlighted && "ring-2 ring-primary/70 ring-offset-2 ring-offset-transparent shadow-[0_0_28px_rgba(0,255,255,0.35)]",
       )}
     >
