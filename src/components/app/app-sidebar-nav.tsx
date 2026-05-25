@@ -78,9 +78,6 @@ export function AppSidebarNav({
         >
           <EchonXLogo size={collapsed ? "compact" : "header"} />
         </Link>
-        {!collapsed ? (
-          <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground/75">{t.marketing.badge}</p>
-        ) : null}
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 p-2.5">
