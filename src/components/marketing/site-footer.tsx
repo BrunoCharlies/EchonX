@@ -99,13 +99,16 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-wrap justify-end gap-x-6 gap-y-2 border-t border-border/40 pt-6 text-xs text-muted-foreground">
+        <nav
+          className="mt-10 flex w-full flex-wrap items-center justify-evenly gap-x-4 gap-y-2 border-t border-border/40 pt-6 text-xs text-muted-foreground sm:justify-center sm:gap-x-10"
+          aria-label="Legal"
+        >
           {LEGAL_LINKS.map((link) => (
             <Link key={link.href} href={link.href} className="hover:text-foreground">
               {link.label}
             </Link>
           ))}
-        </div>
+        </nav>
       </div>
     </footer>
   );
