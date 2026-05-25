@@ -28,9 +28,12 @@ import {
   type RecommendedReadingItem,
 } from "@/server/actions/recommended-reading";
 import type { OfficialChannelState } from "@/lib/curator/ingest";
+import { AdminMembersPanel } from "@/components/admin/admin-members-panel";
 import { OfficialChannelAdmin } from "@/components/app/official-channel-admin";
 import { QubicChannelAdmin } from "@/components/app/qubic-channel-admin";
 import type { QubicChannelState } from "@/lib/curator/qubic-ingest";
+
+type AdminView = "operations" | "members";
 
 const X_SYNC_MANUAL_RESET_STORAGE_KEY = "echonx:x-sync-manual-reset-at";
 
@@ -65,6 +68,7 @@ export function AdminDashboard({
   const [recommendationMessage, setRecommendationMessage] = useState<string | null>(null);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
   const [recommendationEditing, setRecommendationEditing] = useState(!initialRecommendation);
+  const [adminView, setAdminView] = useState<AdminView>("operations");
 
   useEffect(() => {
     let alive = true;
@@ -151,6 +155,29 @@ export function AdminDashboard({
         </p>
       </header>
 
+      <nav className="admin-view-tabs" aria-label="Secções do admin">
+        <button
+          type="button"
+          className={cn("admin-view-tabs__btn", adminView === "operations" && "admin-view-tabs__btn--active")}
+          onClick={() => setAdminView("operations")}
+        >
+          Operações
+        </button>
+        <button
+          type="button"
+          className={cn("admin-view-tabs__btn", adminView === "members" && "admin-view-tabs__btn--active")}
+          onClick={() => setAdminView("members")}
+        >
+          Membros
+        </button>
+      </nav>
+
+      {adminView === "members" ? (
+        <AdminMembersPanel />
+      ) : null}
+
+      {adminView === "operations" ? (
+        <>
       <AdminSection
         variant={openAiConfigured ? "default" : "alert"}
         title="AI Context (OpenAI)"
@@ -404,6 +431,8 @@ export function AdminDashboard({
       </AdminSection>
 
       <p className="admin-footer-meta">EchonX Admin · acesso restrito</p>
+        </>
+      ) : null}
     </div>
   );
 }
