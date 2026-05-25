@@ -15,15 +15,37 @@ export function getSupportEmail() {
   );
 }
 
-/** Canonical browser origin for auth callbacks and password reset links. */
+const PRODUCTION_FALLBACK_ORIGIN = "https://echonx.app";
+
+function normalizeOriginCandidate(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  let candidate = trimmed.replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate.replace(/^\/+/, "")}`;
+  }
+  try {
+    return new URL(candidate).origin;
+  } catch {
+    return null;
+  }
+}
+
+/** Canonical browser origin for auth callbacks, Stripe redirects, and password reset links. */
 export function getAppOrigin() {
-  const explicit =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.AUTH_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "";
-  if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
+  for (const value of [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.AUTH_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_URL,
+  ]) {
+    if (value == null) continue;
+    const origin = normalizeOriginCandidate(value);
+    if (origin) return origin;
+  }
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return PRODUCTION_FALLBACK_ORIGIN;
+  }
   return "http://localhost:3002";
 }
 

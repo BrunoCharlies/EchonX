@@ -5,6 +5,7 @@ import {
   getStripePriceIdForAiAnalysis,
   isStripeAiBillingConfigured,
 } from "@/lib/billing/stripe-config";
+import { formatCheckoutApiError } from "@/lib/billing/format-checkout-api-error";
 import { getAppOrigin } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe/server";
@@ -12,6 +13,7 @@ import { getStripeServer } from "@/lib/stripe/server";
 export const runtime = "nodejs";
 
 export async function POST() {
+  try {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -74,4 +76,10 @@ export async function POST() {
   }
 
   return NextResponse.json({ url: checkoutSession.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Checkout failed";
+    console.error("[billing/ai/checkout]", message);
+    const { error, status } = formatCheckoutApiError(err);
+    return NextResponse.json({ error }, { status });
+  }
 }

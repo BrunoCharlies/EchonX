@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { formatCheckoutApiError } from "@/lib/billing/format-checkout-api-error";
 import { getAppOrigin } from "@/lib/env";
 import {
   STRIPE_BILLING_PRODUCT_AUDIOPOST,
@@ -102,17 +103,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Checkout failed";
     console.error("[billing/checkout]", message);
-    const isLiveTestMismatch =
-      /no such price|similar object exists in test mode|similar object exists in live mode/i.test(
-        message,
-      );
-    return NextResponse.json(
-      {
-        error: isLiveTestMismatch
-          ? "Stripe plan prices do not match this environment (live vs test). Check STRIPE_PRICE_* on Vercel."
-          : "Could not start checkout. Try again in a moment.",
-      },
-      { status: 500 },
-    );
+    const { error, status } = formatCheckoutApiError(err);
+    return NextResponse.json({ error }, { status });
   }
 }

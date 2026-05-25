@@ -7,6 +7,7 @@ import {
   isStripeLibraryBillingConfigured,
 } from "@/lib/billing/stripe-config";
 import type { LibraryPlanTier } from "@/lib/billing/library-plans";
+import { formatCheckoutApiError } from "@/lib/billing/format-checkout-api-error";
 import { getAppOrigin } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe/server";
@@ -27,6 +28,7 @@ function parseLibraryPlan(body: unknown): LibraryPlanTier | null {
 }
 
 export async function POST(request: Request) {
+  try {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,4 +111,10 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ url: checkoutSession.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Checkout failed";
+    console.error("[billing/library/checkout]", message);
+    const { error, status } = formatCheckoutApiError(err);
+    return NextResponse.json({ error }, { status });
+  }
 }
