@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { trackBeginCheckout } from "@/lib/analytics/events";
+import { AI_ANALYSIS_PLAN } from "@/lib/billing/ai-plans";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -26,6 +28,11 @@ export function AiBillingCheckoutButton({ label, disabled, className, highlighte
         setError(data.error ?? "Could not start checkout");
         return;
       }
+      trackBeginCheckout({
+        product: "ai",
+        plan: AI_ANALYSIS_PLAN.id,
+        value: AI_ANALYSIS_PLAN.priceUsd,
+      });
       window.location.href = data.url;
     } catch {
       setError("Network error. Try again.");

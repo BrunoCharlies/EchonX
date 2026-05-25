@@ -36,6 +36,10 @@ export const ADMIN_DOC_LINKS = {
     "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#native-profile-intelligence-maio-2026",
   libraryUpdatesSection:
     "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#atualizacoes-library-xprofiles-maio-2026",
+  projectHoursSection:
+    "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#horas-projeto-maio-2026",
+  ga4Section:
+    "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#google-analytics-ga4-maio-2026",
 } as const;
 
 export const EXPLAINER_STATUS_LABEL: Record<ExplainerStatus, string> = {

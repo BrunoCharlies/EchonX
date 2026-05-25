@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Users, X } from "lucide-react";
+import { trackAddProfile } from "@/lib/analytics/events";
 import { addXProfileToListening } from "@/server/actions/x-listening";
 import { getFollowedProfiles, unfollowProfile, type FollowedProfile } from "@/server/actions/listen";
 import { EMPTY_AUDIOPOST_QUEUE_EVENT } from "@/lib/audiopost/events";
@@ -64,6 +65,7 @@ export function AudiopostXProfilesPanel() {
         setError(result.error);
         return;
       }
+      trackAddProfile("audiopost_panel");
       window.dispatchEvent(new Event("echonx:listening-queue-refresh"));
       form.reset();
       setProfiles(await getFollowedProfiles());

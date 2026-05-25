@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { trackBeginCheckout } from "@/lib/analytics/events";
 import { parseCheckoutResponse } from "@/lib/billing/parse-checkout-response";
+import { getPlanById, type PlanTier } from "@/lib/plans";
 import { cn } from "@/lib/utils";
-import type { PlanTier } from "@/lib/plans";
 
 type BillingCheckoutButtonProps = {
   planId: PlanTier;
@@ -40,6 +41,12 @@ export function BillingCheckoutButton({
         setError(parsed.error);
         return;
       }
+      const tier = getPlanById(planId);
+      trackBeginCheckout({
+        product: "audiopost",
+        plan: planId,
+        value: tier.priceUsd,
+      });
       window.location.href = parsed.url;
     } catch {
       setError("Connection error. Check your network and try again.");

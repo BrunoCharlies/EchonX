@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { trackSignUp } from "@/lib/analytics/events";
 import { signUpWithPasswordAction } from "@/server/actions/auth-supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,11 @@ export function RegisterForm({ callbackUrl }: Props) {
         return;
       }
       if (result.needsEmailConfirmation) {
+        trackSignUp("email");
         setInfo(t.auth.confirmEmail);
         return;
       }
+      trackSignUp("email");
       router.push(safeCallback);
       router.refresh();
     });

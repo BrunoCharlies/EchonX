@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
+import { BillingPageAnalytics } from "@/components/analytics/billing-page-analytics";
 import {
   BookOpen,
   Check,
@@ -247,6 +248,17 @@ export function BillingConversionPage({
 
   return (
     <div className="space-y-16 pb-20">
+      <Suspense fallback={null}>
+        <BillingPageAnalytics
+          fromXProfile={fromXProfile}
+          fromFollow={fromFollow}
+          suggestedPlan={suggestedPlan}
+          suggestedLibraryPlan={suggestedLibraryPlan}
+          checkoutSuccess={checkoutSuccess}
+          libraryCheckoutSuccess={libraryCheckoutSuccess}
+          aiCheckoutSuccess={aiCheckoutSuccess}
+        />
+      </Suspense>
       <BillingCheckoutSuccess show={checkoutSuccess || libraryCheckoutSuccess || aiCheckoutSuccess} />
       {checkoutCancelled || libraryCheckoutCancelled ? (
         <p className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">

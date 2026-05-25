@@ -7,6 +7,7 @@ import { EchonxThemeProvider } from "@/components/theme/echonx-theme-provider";
 import { EchonxThemeScript } from "@/components/theme/echonx-theme-script";
 import { getServerLocale } from "@/lib/i18n/server";
 import { auth } from "@/auth";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import {
   SITE_OG_IMAGE_SIZE,
   SITE_SOCIAL_DESCRIPTION,
@@ -97,6 +98,7 @@ export default async function RootLayout({
       data-is-admin={isAdmin ? "1" : "0"}
     >
       <body className={cn("min-h-dvh font-sans", inter.variable, jetbrains.variable)}>
+        <GoogleAnalytics />
         <EchonxThemeScript />
         <EchonxThemeProvider userId={userId} isAdmin={isAdmin}>
           <AppProviders>{children}</AppProviders>

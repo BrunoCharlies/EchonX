@@ -3012,6 +3012,160 @@ where listener.last_seen_at &gt; now() - interval '30 minutes';</code></pre>
       </ul>
     </section>
 
+    <section id="horas-projeto-maio-2026">
+      <h2>49. Horas de trabalho e alterações recentes (Maio 2026)</h2>
+      <div class="callout">
+        <strong>Estimativa documentada:</strong> em média <strong>50–80 horas</strong> de trabalho no projeto EchonX desde o início até 25/05/2026.
+        Não é um timesheet oficial — é um diagnóstico por proxies (Git, sessões Cursor, commits).
+      </div>
+
+      <h3 id="horas-metodologia">49.1 Metodologia e limitações</h3>
+      <table>
+        <thead>
+          <tr><th>Fonte</th><th>O que mede</th><th>Limite</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>git log</code></td><td>Datas e volume de commits</td><td>Só 3 dias com commit explícito (14, 24 e 25/05); trabalho sem commit não aparece</td></tr>
+          <tr><td>Transcripts Cursor</td><td>Conversas com o agente (~680 mensagens do utilizador no chat principal)</td><td>Sem timestamp por mensagem; não separa tempo humano vs agente</td></tr>
+          <tr><td>Cursor (conta)</td><td>Uso / billing do plano</td><td>Não exportado para este HTML — consultar no dashboard Cursor</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Período calendário:</strong> primeiro commit <code>2026-05-14 05:50</code> (-0300) → último <code>2026-05-25 16:25</code> (~11 dias).
+        <strong>Total de commits em <code>main</code>:</strong> 40 (até o registo desta secção).
+      </p>
+
+      <h3 id="horas-estimativa">49.2 Faixa de horas (média acordada para documentação)</h3>
+      <table>
+        <thead>
+          <tr><th>Cenário</th><th>Horas (ordem de grandeza)</th><th>Notas</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Conservador</td><td>~25–40 h</td><td>Sessões curtas nos dias com commit</td></tr>
+          <tr><td><strong>Média documentada</strong></td><td><strong>50–80 h</strong></td><td>Várias sessões intensas (24–25/05) + bootstrap 14/05</td></tr>
+          <tr><td>Alto (janela commit + chat)</td><td>80+ h</td><td>Provável exagero — inclui intervalos e noite</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Dias com atividade nos transcripts Cursor:</strong> 14, 15, 20, 22, 23, 24 e 25/05/2026 (~7–8 dias de trabalho no IDE).
+      </p>
+
+      <h3 id="alteracoes-maio-2026">49.3 O que alterámos no produto e na documentação (resumo)</h3>
+      <p>Registo das entregas principais neste ciclo, para alinhar código, Vercel, Supabase e este HTML.</p>
+
+      <h4>Perfil e app (mobile / UX)</h4>
+      <ul>
+        <li>Perfil nativo: alinhamento do anel <strong>Context</strong> com <strong>Signal level</strong> em mobile.</li>
+        <li>Menu lateral mobile: fundo opaco (sem transparência sobre o conteúdo).</li>
+        <li>Remoção da tagline de marketing sob o logo na sidebar e no drawer.</li>
+        <li>Header mobile: logo alinhada verticalmente com menu, pesquisa e idioma.</li>
+        <li>Rodapé do perfil: links Privacy / Terms / About centrados e espaçados.</li>
+      </ul>
+
+      <h4>Marketing e partilha social</h4>
+      <ul>
+        <li>Homepage: remoção dos badges “Email sign-in / Automatic moderation / Private by design” no hero.</li>
+        <li>Imagem OG/Twitter para <code>echonx.app</code> — <code>public/brand/echonx-social-share.jpg</code>, metadados em <code>src/lib/seo/social-share.ts</code>.</li>
+        <li>Settings billing: remoção do toggle de plano anual (só mensal).</li>
+      </ul>
+
+      <h4>Stripe e billing (produção)</h4>
+      <ul>
+        <li>Migração test → live: chaves <code>pk_live_</code> / <code>sk_live_</code>, preços <code>price_…</code> na Vercel.</li>
+        <li>Webhook: <code>https://echonx.app/api/webhooks/stripe</code> + <code>STRIPE_WEBHOOK_SECRET</code> live.</li>
+        <li>Correção checkout: <code>getAppOrigin()</code> normaliza URL (<code>https://echonx.app</code>) — erro Stripe “Not a valid URL” resolvido.</li>
+        <li>Erros de checkout mais claros na UI (<code>format-checkout-api-error.ts</code>, rotas audiopost / library / AI).</li>
+        <li>Variáveis Vercel: usar <code>STRIPE_PRICE_STARTER</code>, <code>STRIPE_PRICE_POPULAR</code>, etc. — <strong>não</strong> <code>STRIPE_PRICE_ID_*</code> legados.</li>
+        <li>Docs: <code>docs/STRIPE-ENV-SWITCH.md</code>, <code>env/stripe.live.env</code> (referência local, gitignored).</li>
+      </ul>
+
+      <h4>Admin (só utilizadores <code>role = admin</code>)</h4>
+      <ul>
+        <li>Dashboard Admin: abas <strong>Operações</strong> | <strong>Membros</strong> (<code>/admin</code>).</li>
+        <li>Aviso: últimos <strong>5 cadastros</strong> nativos (<code>kind = native</code>).</li>
+        <li>Tabela: todos os membros + e-mail via <code>auth.admin.listUsers()</code> (fallback <code>email_credentials</code>).</li>
+        <li>API: <code>GET /api/admin/members</code> · UI: <code>src/components/admin/admin-members-panel.tsx</code>.</li>
+        <li>Supabase: coluna <code>profiles.last_seen_at</code> adicionada em produção (SQL Editor) para última atividade e métricas online.</li>
+      </ul>
+
+      <h4>Commits de referência (Git <code>main</code>, Maio 2026)</h4>
+      <table>
+        <thead><tr><th>Commit (abrev.)</th><th>Tema</th></tr></thead>
+        <tbody>
+          <tr><td><code>20e6acd</code></td><td>Admin — aba Membros</td></tr>
+          <tr><td><code>d6104cd</code></td><td>Stripe — <code>getAppOrigin</code> + erros checkout</td></tr>
+          <tr><td><code>d34af5e</code></td><td>Checkout — mensagens de erro na UI</td></tr>
+          <tr><td><code>d727537</code> / <code>a617564</code></td><td>Social share / OG</td></tr>
+          <tr><td><code>ef853c9</code> … <code>b9fd0db</code></td><td>Homepage, footer, nav mobile, perfil Context ring</td></tr>
+          <tr><td><code>535b4bb</code> (inicial)</td><td>Scaffold Next.js 15 — 14/05</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="horas-proximos-passos">49.4 Registo oficial de horas (opcional)</h3>
+      <p>
+        Para faturação ou relatório ao cliente, complementar com planilha manual (data · tarefa · horas) ou export do Cursor Billing.
+        Este §49 fixa a <strong>média 50–80 h</strong> para documentação interna do projeto.
+      </p>
+      <p>Âncora: <code>#horas-projeto-maio-2026</code> · Admin Membros: <code>/admin</code> (aba Membros).</p>
+    </section>
+
+    <section id="google-analytics-ga4-maio-2026">
+      <h2>50. Google Analytics 4 (GA4) — implementação Maio 2026</h2>
+      <div class="callout ok">
+        <strong>Measurement ID:</strong> <code>G-L181BDNFNT</code> · Não bloqueia render nem auth/billing —
+        scripts com <code>next/script</code> (<code>afterInteractive</code>) e GA desligado em <code>npm run dev</code> por defeito.
+      </div>
+
+      <h3 id="ga4-arquitetura">50.1 Arquitetura (Next.js App Router)</h3>
+      <table>
+        <thead><tr><th>Ficheiro</th><th>Função</th></tr></thead>
+        <tbody>
+          <tr><td><code>src/components/analytics/google-analytics.tsx</code></td><td>Carrega <code>gtag.js</code> no <code>layout.tsx</code> raiz</td></tr>
+          <tr><td><code>src/components/analytics/analytics-route-tracker.tsx</code></td><td>Envia <code>page_path</code> em cada navegação (SPA)</td></tr>
+          <tr><td><code>src/lib/analytics/gtag.ts</code></td><td><code>trackPageView</code>, <code>trackGaEvent</code></td></tr>
+          <tr><td><code>src/lib/analytics/events.ts</code></td><td>Eventos de produto (sign_up, checkout, …)</td></tr>
+          <tr><td><code>src/hooks/use-analytics.ts</code></td><td>Hook <code>useAnalytics()</code> para componentes client</td></tr>
+          <tr><td><code>src/components/analytics/billing-page-analytics.tsx</code></td><td>View billing + <code>purchase</code> no retorno Stripe</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Inicialização: <code>gtag('config', 'G-L181BDNFNT', { send_page_view: false })</code> — evita page view duplicado;
+        o tracker client envia <code>page_path</code> com pathname + query em cada mudança de rota.
+      </p>
+
+      <h3 id="ga4-variaveis">50.2 Variáveis de ambiente</h3>
+      <table>
+        <thead><tr><th>Variável</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td><code>NEXT_PUBLIC_GA_MEASUREMENT_ID</code></td><td><code>G-L181BDNFNT</code> (Vercel Production + Preview)</td></tr>
+          <tr><td><code>NEXT_PUBLIC_GA_ENABLED</code></td><td><code>true</code> só para testar hits em <code>localhost</code>; em produção omitir</td></tr>
+        </tbody>
+      </table>
+      <p>Lógica em <code>src/lib/analytics/ga4-config.ts</code>: sem ID ou com GA desativado → nenhum script, nenhum evento (zero impacto).</p>
+
+      <h3 id="ga4-eventos">50.3 Eventos implementados</h3>
+      <table>
+        <thead><tr><th>Evento</th><th>Quando</th><th>Onde no código</th></tr></thead>
+        <tbody>
+          <tr><td>Page view</td><td>Toda navegação App Router</td><td><code>analytics-route-tracker.tsx</code></td></tr>
+          <tr><td><code>sign_up</code></td><td>Registo email OK</td><td><code>register-form.tsx</code></td></tr>
+          <tr><td><code>add_profile</code></td><td>X @handle adicionado à escuta</td><td><code>audiopost-x-profiles-panel.tsx</code>, <code>x-profile-listening-form.tsx</code></td></tr>
+          <tr><td><code>view_billing_page</code></td><td>Abre Settings / Billing</td><td><code>billing-page-analytics.tsx</code></td></tr>
+          <tr><td><code>begin_checkout</code></td><td>Clique no plano (antes do Stripe)</td><td>Botões <code>*-billing-checkout-button.tsx</code></td></tr>
+          <tr><td><code>purchase</code></td><td>Retorno <code>?checkout=*-success&amp;session_id=</code></td><td><code>billing-page-analytics.tsx</code></td></tr>
+        </tbody>
+      </table>
+      <p>Sessões, tempo na página e taxa de rejeição são calculados pelo GA4 a partir dos page views — sem código extra.</p>
+
+      <h3 id="ga4-verificacao">50.4 Verificação pós-deploy</h3>
+      <ol>
+        <li>Vercel → Environment Variables → <code>NEXT_PUBLIC_GA_MEASUREMENT_ID</code> → redeploy.</li>
+        <li>GA4 → Admin → DebugView (ou extensão Analytics Debugger no Chrome).</li>
+        <li>Navegar em <code>echonx.app</code>, abrir billing, simular checkout — confirmar eventos.</li>
+      </ol>
+      <p>Âncora: <code>#google-analytics-ga4-maio-2026</code></p>
+    </section>
+
     <section id="backup-v1-14">
       <h2>48. Backupv1.14 — ponto de restauração (atual)</h2>
       <div class="callout ok">

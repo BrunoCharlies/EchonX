@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Radio, RefreshCw } from "lucide-react";
+import { trackAddProfile } from "@/lib/analytics/events";
 import { addXProfileToListening, syncMyXListeningQueue } from "@/server/actions/x-listening";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export function XProfileListeningForm() {
         setError(result.error);
         return;
       }
+      trackAddProfile("listening_form");
       setMessage(result.message);
       setProfilePath(result.profilePath);
       notifyQueue();

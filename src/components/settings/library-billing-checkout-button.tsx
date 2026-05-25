@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { trackBeginCheckout } from "@/lib/analytics/events";
 import { parseCheckoutResponse } from "@/lib/billing/parse-checkout-response";
+import { LIBRARY_PLANS, type LibraryPlanTier } from "@/lib/billing/library-plans";
 import { cn } from "@/lib/utils";
-import type { LibraryPlanTier } from "@/lib/billing/library-plans";
 
 type LibraryBillingCheckoutButtonProps = {
   planId: LibraryPlanTier;
@@ -40,6 +41,12 @@ export function LibraryBillingCheckoutButton({
         setError(parsed.error);
         return;
       }
+      const tier = LIBRARY_PLANS.find((p) => p.id === planId);
+      trackBeginCheckout({
+        product: "library",
+        plan: planId,
+        value: tier?.priceUsd,
+      });
       window.location.href = parsed.url;
     } catch {
       setError("Connection error. Check your network and try again.");

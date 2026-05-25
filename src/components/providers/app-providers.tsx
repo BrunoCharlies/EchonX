@@ -1,6 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
+import { AnalyticsRouteTracker } from "@/components/analytics/analytics-route-tracker";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { ListenQueueProvider } from "@/components/listen/listen-queue-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +18,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={200}>
+      <Suspense fallback={null}>
+        <AnalyticsRouteTracker />
+      </Suspense>
       {withQueue ? <ListenQueueProvider>{children}</ListenQueueProvider> : children}
       <InstallPrompt />
     </TooltipProvider>
