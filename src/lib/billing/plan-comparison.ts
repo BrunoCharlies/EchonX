@@ -87,12 +87,4 @@ export const BILLING_FAQ = [
   },
 ] as const;
 
-export function yearlyMonthlyEquivalent(priceUsd: number, discount = 0.2): number {
-  return Math.round(priceUsd * (1 - discount) * 100) / 100;
-}
-
-export function yearlyTotal(priceUsd: number, discount = 0.2): number {
-  return Math.round(priceUsd * 12 * (1 - discount) * 100) / 100;
-}
-
 export const PAID_PLAN_IDS: PlanTier[] = ["starter", "popular", "pro"];

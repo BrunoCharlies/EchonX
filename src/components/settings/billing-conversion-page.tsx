@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   BookOpen,
   Check,
@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import {
   BILLING_COMPARISON_ROWS,
   BILLING_FAQ,
-  yearlyMonthlyEquivalent,
   type ComparisonCell,
 } from "@/lib/billing/plan-comparison";
 import { LIBRARY_PLANS } from "@/lib/billing/library-plans";
@@ -128,7 +127,6 @@ function PlanPricingCard({
   plan,
   planId,
   libraryPlanId,
-  yearly,
   isCurrent,
   isSuggested,
   checkoutDisabled = false,
@@ -139,7 +137,6 @@ function PlanPricingCard({
   plan: PricingCardPlan;
   planId?: PlanTier;
   libraryPlanId?: LibraryPlanTier;
-  yearly: boolean;
   isCurrent: boolean;
   isSuggested: boolean;
   checkoutDisabled?: boolean;
@@ -147,8 +144,7 @@ function PlanPricingCard({
   libraryStripeCheckoutEnabled?: boolean;
   disabledLabel?: string;
 }) {
-  const monthly = plan.priceUsd;
-  const displayMonthly = yearly ? yearlyMonthlyEquivalent(monthly) : monthly;
+  const displayMonthly = plan.priceUsd;
   const highlighted = plan.highlighted || isSuggested;
 
   return (
@@ -177,11 +173,7 @@ function PlanPricingCard({
         <span className="text-4xl font-semibold tracking-tight">${displayMonthly}</span>
         <span className="text-sm text-muted-foreground">/ month</span>
       </div>
-      {yearly ? (
-        <p className="text-xs text-muted-foreground">Billed annually · Save 20%</p>
-      ) : (
-        <p className="text-xs text-muted-foreground">Billed monthly</p>
-      )}
+      <p className="text-xs text-muted-foreground">Billed monthly</p>
       <ul className="mt-6 flex-1 space-y-3 text-sm text-muted-foreground">
         {plan.features.map((feature) => (
           <li key={feature} className="flex gap-2">
@@ -251,7 +243,6 @@ export function BillingConversionPage({
   aiCheckoutSuccess = false,
   aiCheckoutCancelled = false,
 }: BillingConversionPageProps) {
-  const [yearly, setYearly] = useState(false);
   const paidPlans = useMemo(() => PLANS.filter((p) => p.id !== "free"), []);
 
   return (
@@ -360,34 +351,7 @@ export function BillingConversionPage({
         </section>
       ) : null}
 
-      {/* Billing toggle */}
       <section id="plan-cards" className="flex flex-col items-center gap-4 scroll-mt-8">
-        <div className="inline-flex items-center rounded-full border border-border/80 bg-muted/40 p-1">
-          <button
-            type="button"
-            onClick={() => setYearly(false)}
-            className={cn(
-              "rounded-full px-5 py-2 text-sm font-medium transition-colors",
-              !yearly ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Pay monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setYearly(true)}
-            className={cn(
-              "flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors",
-              yearly ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Pay yearly
-            <Badge className="border-emerald-500/40 bg-emerald-500/15 text-[10px] text-emerald-400 hover:bg-emerald-500/15">
-              Save up to 20%
-            </Badge>
-          </button>
-        </div>
-
         <div className="w-full space-y-4">
           <div className="flex flex-col gap-2 text-center sm:text-left">
             <h2 className="text-xl font-semibold tracking-tight">Audiopost plans</h2>
@@ -401,7 +365,6 @@ export function BillingConversionPage({
                 key={plan.id}
                 plan={plan}
                 planId={plan.id}
-                yearly={yearly}
                 isCurrent={currentPlanId === plan.id}
                 isSuggested={suggestedPlan === plan.id}
                 stripeCheckoutEnabled={stripeCheckoutEnabled}
@@ -429,7 +392,6 @@ export function BillingConversionPage({
                 key={plan.id}
                 plan={plan}
                 libraryPlanId={plan.id}
-                yearly={yearly}
                 isCurrent={currentLibraryPlanId === plan.id}
                 isSuggested={
                   suggestedLibraryPlan === plan.id || (plan.highlighted ?? false)

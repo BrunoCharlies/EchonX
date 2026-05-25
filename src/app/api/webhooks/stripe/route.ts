@@ -35,7 +35,9 @@ async function dispatchSubscriptionEvent(
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!webhookSecret) {
-    console.error("[stripe webhook] STRIPE_WEBHOOK_SECRET is missing — run npm run stripe:use-test and restart dev");
+    console.error(
+      "[stripe webhook] STRIPE_WEBHOOK_SECRET is missing — set live whsec in Vercel or run npm run stripe:use-live",
+    );
     return NextResponse.json({ error: "Stripe webhook is not configured" }, { status: 500 });
   }
 
