@@ -8,10 +8,10 @@ import { EchonxThemeScript } from "@/components/theme/echonx-theme-script";
 import { getServerLocale } from "@/lib/i18n/server";
 import { auth } from "@/auth";
 import {
-  resolveSiteOgImagePath,
   SITE_OG_IMAGE_SIZE,
   SITE_SOCIAL_DESCRIPTION,
   SITE_SOCIAL_TITLE,
+  siteOgImageAbsoluteUrl,
 } from "@/lib/seo/social-share";
 
 const inter = Inter({
@@ -27,9 +27,10 @@ const jetbrains = JetBrains_Mono({
 });
 
 function buildMetadata(): Metadata {
-  const ogImageUrl = resolveSiteOgImagePath();
+  const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://echonx.app");
+  const ogImageUrl = siteOgImageAbsoluteUrl(metadataBase);
   return {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://echonx.app"),
+    metadataBase,
     applicationName: "EchonX",
     title: {
       default: "EchonX — Hear the people you follow, on your terms",
@@ -59,7 +60,7 @@ function buildMetadata(): Metadata {
       card: "summary_large_image",
       title: SITE_SOCIAL_TITLE,
       description: SITE_SOCIAL_DESCRIPTION,
-      images: [ogImageUrl],
+      images: [{ url: ogImageUrl, alt: SITE_SOCIAL_TITLE }],
     },
     icons: {
       icon: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
