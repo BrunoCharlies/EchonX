@@ -46,26 +46,26 @@ export function AppMobileNavDrawer({ open, onClose, planLabel, publicProfileHref
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div className="fixed inset-0 z-[100] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 z-0 bg-black/75 backdrop-blur-[2px]"
         aria-label="Close menu"
         onClick={onClose}
       />
       <aside
         className={cn(
-          "absolute inset-y-0 left-0 flex w-[min(100vw-2.5rem,280px)] flex-col",
-          "border-r border-border/60 bg-[#050a12]/98 shadow-2xl",
+          "dark absolute inset-y-0 left-0 z-10 isolate flex w-[min(100vw-2.5rem,280px)] flex-col",
+          "border-r border-white/10 bg-[#050a12] text-foreground shadow-[4px_0_32px_rgba(0,0,0,0.5)]",
         )}
       >
-        <div className="flex items-center justify-end border-b border-border/60 px-2 py-2">
+        <div className="flex shrink-0 items-center justify-end border-b border-white/10 bg-[#050a12] px-2 py-2">
           <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={onClose}>
             <X className="h-5 w-5" />
             <span className="sr-only">Close menu</span>
           </Button>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#050a12]">
           <AppSidebarNav
             collapsed={false}
             planLabel={planLabel}
@@ -74,7 +74,7 @@ export function AppMobileNavDrawer({ open, onClose, planLabel, publicProfileHref
             onNavigate={onClose}
           />
         </div>
-        <div className="shrink-0 border-t border-border/60 p-3">
+        <div className="shrink-0 border-t border-white/10 bg-[#050a12] p-3">
           <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => void onSignOut()}>
             {t.common.signOut}
           </Button>

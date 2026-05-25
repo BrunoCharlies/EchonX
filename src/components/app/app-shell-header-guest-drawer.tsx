@@ -39,21 +39,26 @@ export function AppShellHeaderGuestDrawer({ open, onClose }: Props) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
-      <button type="button" className="absolute inset-0 bg-black/60" aria-label="Close menu" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+      <button
+        type="button"
+        className="absolute inset-0 z-0 bg-black/75 backdrop-blur-[2px]"
+        aria-label="Close menu"
+        onClick={onClose}
+      />
       <aside
         className={cn(
-          "absolute inset-y-0 left-0 flex w-[min(100vw-2.5rem,280px)] flex-col",
-          "border-r border-border/60 bg-background shadow-2xl",
+          "absolute inset-y-0 left-0 z-10 isolate flex w-[min(100vw-2.5rem,280px)] flex-col",
+          "border-r border-border/60 bg-background shadow-[4px_0_32px_rgba(0,0,0,0.35)]",
         )}
       >
-        <div className="flex items-center justify-end border-b border-border/60 px-2 py-2">
+        <div className="flex shrink-0 items-center justify-end border-b border-border/60 bg-background px-2 py-2">
           <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={onClose}>
             <X className="h-5 w-5" />
             <span className="sr-only">Close menu</span>
           </Button>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 bg-background p-3">
           {links.map((link) => (
             <Link
               key={link.href}
