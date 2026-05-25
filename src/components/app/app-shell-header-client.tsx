@@ -44,7 +44,7 @@ export function AppShellHeaderClient({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <Link href="/app/explore" className="shrink-0">
+          <Link href="/app/explore" className="flex h-11 shrink-0 items-center justify-center">
             <EchonXLogo size="mini" />
           </Link>
           <ProfileGlobalSearch className="min-w-0 flex-1" />

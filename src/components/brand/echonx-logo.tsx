@@ -31,11 +31,11 @@ const SIZE_STYLES = {
     transformOrigin: "left center" as const,
   },
   mini: {
-    wrapper: "h-7 w-[104px] overflow-hidden",
+    wrapper: "flex h-7 w-[104px] items-center justify-center overflow-hidden",
     wrapperStyle: undefined,
-    image: "object-contain object-left",
+    image: "object-contain object-center",
     zoom: HEADER_LOGO_ZOOM,
-    transformOrigin: "left center" as const,
+    transformOrigin: "center center" as const,
   },
 } as const;
 
