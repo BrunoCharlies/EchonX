@@ -21,75 +21,98 @@ function parsePlan(body: unknown): PlanTier | null {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!isStripeBillingConfigured()) {
-    return NextResponse.json(
-      { error: "Stripe billing is not configured on this server." },
-      { status: 503 },
-    );
-  }
-
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const plan = parsePlan(body);
-  if (!plan || !isPaidAudiopostPlan(plan)) {
-    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-  }
+    if (!isStripeBillingConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "Billing is not configured on the server. Add Stripe live keys and price IDs in Vercel, then redeploy.",
+        },
+        { status: 503 },
+      );
+    }
 
-  const priceId = getStripePriceIdForPlan(plan);
-  if (!priceId) {
-    return NextResponse.json({ error: "Price not configured for this plan" }, { status: 503 });
-  }
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
-  const supabase = await createClient();
-  const { data: subRow } = await supabase
-    .from("subscriptions")
-    .select("stripe_customer_id")
-    .eq("owner_x_user_id", session.user.id)
-    .maybeSingle();
+    const plan = parsePlan(body);
+    if (!plan || !isPaidAudiopostPlan(plan)) {
+      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    }
 
-  const stripe = getStripeServer();
-  const origin = getAppOrigin();
-  const ownerId = session.user.id;
-  const billingUrl = `${origin}/app/settings/billing`;
+    const priceId = getStripePriceIdForPlan(plan);
+    if (!priceId) {
+      return NextResponse.json(
+        { error: `Price not configured for plan "${plan}" on this server.` },
+        { status: 503 },
+      );
+    }
 
-  const existingCustomerId = (subRow?.stripe_customer_id as string | null)?.trim() || undefined;
+    const supabase = await createClient();
+    const { data: subRow } = await supabase
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("owner_x_user_id", session.user.id)
+      .maybeSingle();
 
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: existingCustomerId,
-    customer_email: existingCustomerId ? undefined : session.user.email ?? undefined,
-    client_reference_id: ownerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${billingUrl}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${billingUrl}?checkout=cancelled`,
-    allow_promotion_codes: true,
-    metadata: {
-      billing_product: STRIPE_BILLING_PRODUCT_AUDIOPOST,
-      owner_x_user_id: ownerId,
-      plan_tier: plan,
-    },
-    subscription_data: {
+    const stripe = getStripeServer();
+    const origin = getAppOrigin();
+    const ownerId = session.user.id;
+    const billingUrl = `${origin}/app/settings/billing`;
+
+    const existingCustomerId = (subRow?.stripe_customer_id as string | null)?.trim() || undefined;
+
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: existingCustomerId,
+      customer_email: existingCustomerId ? undefined : session.user.email ?? undefined,
+      client_reference_id: ownerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${billingUrl}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${billingUrl}?checkout=cancelled`,
+      allow_promotion_codes: true,
       metadata: {
         billing_product: STRIPE_BILLING_PRODUCT_AUDIOPOST,
         owner_x_user_id: ownerId,
         plan_tier: plan,
       },
-    },
-  });
+      subscription_data: {
+        metadata: {
+          billing_product: STRIPE_BILLING_PRODUCT_AUDIOPOST,
+          owner_x_user_id: ownerId,
+          plan_tier: plan,
+        },
+      },
+    });
 
-  if (!checkoutSession.url) {
-    return NextResponse.json({ error: "Could not create checkout session" }, { status: 500 });
+    if (!checkoutSession.url) {
+      return NextResponse.json({ error: "Could not create checkout session" }, { status: 500 });
+    }
+
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Checkout failed";
+    console.error("[billing/checkout]", message);
+    const isLiveTestMismatch =
+      /no such price|similar object exists in test mode|similar object exists in live mode/i.test(
+        message,
+      );
+    return NextResponse.json(
+      {
+        error: isLiveTestMismatch
+          ? "Stripe plan prices do not match this environment (live vs test). Check STRIPE_PRICE_* on Vercel."
+          : "Could not start checkout. Try again in a moment.",
+      },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ url: checkoutSession.url });
 }

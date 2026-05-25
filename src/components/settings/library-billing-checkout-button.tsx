@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { parseCheckoutResponse } from "@/lib/billing/parse-checkout-response";
 import { cn } from "@/lib/utils";
 import type { LibraryPlanTier } from "@/lib/billing/library-plans";
 
@@ -30,17 +31,18 @@ export function LibraryBillingCheckoutButton({
     try {
       const res = await fetch("/api/billing/library/checkout", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planId }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !data.url) {
-        setError(data.error ?? "Could not start checkout");
+      const parsed = await parseCheckoutResponse(res);
+      if (!parsed.ok) {
+        setError(parsed.error);
         return;
       }
-      window.location.href = data.url;
+      window.location.href = parsed.url;
     } catch {
-      setError("Network error. Try again.");
+      setError("Connection error. Check your network and try again.");
     } finally {
       setLoading(false);
     }
