@@ -7,6 +7,12 @@ import { EchonxThemeProvider } from "@/components/theme/echonx-theme-provider";
 import { EchonxThemeScript } from "@/components/theme/echonx-theme-script";
 import { getServerLocale } from "@/lib/i18n/server";
 import { auth } from "@/auth";
+import {
+  resolveSiteOgImagePath,
+  SITE_OG_IMAGE_SIZE,
+  SITE_SOCIAL_DESCRIPTION,
+  SITE_SOCIAL_TITLE,
+} from "@/lib/seo/social-share";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -20,37 +26,49 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://echonx.app"),
-  applicationName: "EchonX",
-  title: {
-    default: "EchonX — Hear the people you follow, on your terms",
-    template: "%s · EchonX",
-  },
-  description:
-    "Profile-first social listening for the United States market. Sign in with X, build your native EchonX profile, and listen with premium on-device audio.",
-  manifest: "/manifest.json",
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://echonx.app",
-    siteName: "EchonX",
-    title: "EchonX — Profile-first listening",
+function buildMetadata(): Metadata {
+  const ogImageUrl = resolveSiteOgImagePath();
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://echonx.app"),
+    applicationName: "EchonX",
+    title: {
+      default: "EchonX — Hear the people you follow, on your terms",
+      template: "%s · EchonX",
+    },
     description:
-      "No endless feed. Follow voices through profiles, queue new posts automatically, and keep control with native EchonX profiles plus optional external X profiles.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "EchonX",
-    description:
-      "Profile-first social listening with automatic moderation, PWA install, and premium on-device audio.",
-  },
-  icons: {
-    icon: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
-    apple: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
-  },
-};
+      "Profile-first social listening for the United States market. Sign in with X, build your native EchonX profile, and listen with premium on-device audio.",
+    manifest: "/manifest.json",
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: "https://echonx.app",
+      siteName: "EchonX",
+      title: SITE_SOCIAL_TITLE,
+      description: SITE_SOCIAL_DESCRIPTION,
+      images: [
+        {
+          url: ogImageUrl,
+          width: SITE_OG_IMAGE_SIZE.width,
+          height: SITE_OG_IMAGE_SIZE.height,
+          alt: SITE_SOCIAL_TITLE,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_SOCIAL_TITLE,
+      description: SITE_SOCIAL_DESCRIPTION,
+      images: [ogImageUrl],
+    },
+    icons: {
+      icon: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
+      apple: [{ url: "/brand/echonx-favicon.png", type: "image/png" }],
+    },
+  };
+}
+
+export const metadata: Metadata = buildMetadata();
 
 export const viewport: Viewport = {
   themeColor: [
