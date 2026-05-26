@@ -40,6 +40,10 @@ export const ADMIN_DOC_LINKS = {
     "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#horas-projeto-maio-2026",
   ga4Section:
     "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#google-analytics-ga4-maio-2026",
+  agentSection:
+    "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#echonx-agent-maio-2026",
+  agentPlaybookSection:
+    "/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#agent-playbook-full",
 } as const;
 
 export const EXPLAINER_STATUS_LABEL: Record<ExplainerStatus, string> = {

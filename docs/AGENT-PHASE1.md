@@ -2,6 +2,17 @@
 
 Autonomous social agent: posts on X, replies to mentions, memory in Supabase, driven by OpenAI + Vercel Cron.
 
+**Status (Maio 2026):** em produção — @echonagent responde menções; ver documentação HTML §51.
+
+## Documentation
+
+| Recurso | Caminho |
+|---------|---------|
+| HTML (operacional + playbook) | `/docs/html/2026-05-qubic-echonx-moeda-assinatura.html#echonx-agent-maio-2026` |
+| Playbook (fonte Git) | `content/agent/playbook.md` |
+| Playbook (HTML) | `#agent-playbook-full` na mesma página |
+| Índice | `/docs/html/echonx-explicacoes-index.html` |
+
 ## Backup before changes
 
 **Backupv1.15** — `C:\Users\55479\Desktop\EchonX-backups\Backupv1.15\`
@@ -51,10 +62,14 @@ Copy `hint.agent_x_user_id` → Vercel `AGENT_X_USER_ID`. Remove this route afte
 
 ## Agent playbook (knowledge base)
 
-Edit `content/agent/playbook.md` (Markdown, versioned in Git). Loaded on every post/mention via `getAgentContext()`. Redeploy after changes.
+Edit `content/agent/playbook.md` (Markdown, versioned in Git). Loaded on every post/mention via `getAgentContext()`. Redeploy after changes. HTML mirror: §51.7 in project docs.
+
+## Branding (code constants)
+
+`src/lib/agent/brand.ts` — `@echonxapp`, `#Aigarth`, 2027 estimate framing.
 
 ## Code layout
 
-`src/lib/agent/` — personality, prompts, playbook loader, openai, x-client, posting, mentions, memory, context, config
+`src/lib/agent/` — personality, prompts, playbook loader, openai, x-client, posting, mentions, memory, context, config, brand
 
 `src/app/api/agent/` — cron + manual routes
