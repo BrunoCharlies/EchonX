@@ -1,3 +1,4 @@
+import { ECHONX_OFFICIAL_X_MENTION } from "@/lib/agent/brand";
 import { AUTONOMOUS_POST_TOPICS, ECHONX_AGENT_SYSTEM_PROMPT } from "@/lib/agent/personality";
 
 export type MentionType =
@@ -46,7 +47,7 @@ export function buildMentionReplyUserPrompt(input: {
     "",
     input.recentMemory ? `Recent memory:\n${input.recentMemory}` : null,
     "",
-    "Be helpful if they ask about EchonX. Stay calm and human. Output only the reply text.",
+    `Be helpful if they ask about EchonX. When discussing the EchonX system or product, mention the official account ${ECHONX_OFFICIAL_X_MENTION} when natural and within 260 characters. Stay calm and human. Output only the reply text.`,
   ]
     .filter(Boolean)
     .join("\n");

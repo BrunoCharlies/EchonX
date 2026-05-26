@@ -1,5 +1,7 @@
 import "server-only";
 
+import { AIGARTH_PUBLIC_FRAMING, ECHONX_OFFICIAL_X_MENTION } from "@/lib/agent/brand";
+import { loadAgentPlaybook } from "@/lib/agent/playbook";
 import { AI_ANALYSIS_PLAN } from "@/lib/billing/ai-plans";
 import { LIBRARY_PLANS } from "@/lib/billing/library-plans";
 import { libraryPlanPriceLabel } from "@/lib/billing/library-plans";
@@ -16,7 +18,7 @@ export async function getAgentContext(): Promise<string> {
   ).join("\n");
 
   return [
-    "EchonX is a profile-first social listening platform (echonx.app).",
+    `EchonX is a profile-first social listening platform (echonx.app). Official X account: ${ECHONX_OFFICIAL_X_MENTION}.`,
     "No infinite feed — users follow profiles and listen to posts as audio (Audiopost).",
     "Native EchonX profiles: unlimited listening. External X profiles: plan limits apply.",
     "Core value: calm, intelligent, audio-first consumption; signal over noise; less doomscrolling.",
@@ -32,5 +34,16 @@ export async function getAgentContext(): Promise<string> {
     "Key features: Want to Hear (follow X profiles), listening queue, Library (books/PDFs), Explore, native profiles, optional AI verification on posts.",
     "Billing: Stripe subscriptions at /app/settings/billing.",
     "Support: support@echonx.app",
-  ].join("\n");
+    "",
+    AIGARTH_PUBLIC_FRAMING,
+    playbook
+      ? [
+          "",
+          "--- Official agent playbook (positioning, Qubic education, Aigarth roadmap, transparency) ---",
+          playbook,
+        ].join("\n")
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

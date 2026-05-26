@@ -12,7 +12,7 @@
     },
     {
       "path": "/api/agent/cron-mentions",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/2 * * * *"
     }
   ]
 }

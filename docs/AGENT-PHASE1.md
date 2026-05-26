@@ -22,7 +22,7 @@ Autonomous social agent: posts on X, replies to mentions, memory in Supabase, dr
 | Path | Schedule | Action |
 |------|----------|--------|
 | `/api/agent/cron-post` | Every 4 hours | One autonomous post |
-| `/api/agent/cron-mentions` | Every 10 minutes | Fetch + reply mentions |
+| `/api/agent/cron-mentions` | Every 2 minutes | Fetch + reply mentions |
 
 Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automatically when configured).
 
@@ -49,8 +49,12 @@ Copy `hint.agent_x_user_id` → Vercel `AGENT_X_USER_ID`. Remove this route afte
 - `AGENT_ENABLED=false` in env blocks all runs.
 - No posts until you explicitly enable.
 
+## Agent playbook (knowledge base)
+
+Edit `content/agent/playbook.md` (Markdown, versioned in Git). Loaded on every post/mention via `getAgentContext()`. Redeploy after changes.
+
 ## Code layout
 
-`src/lib/agent/` — personality, prompts, openai, x-client, posting, mentions, memory, context, config
+`src/lib/agent/` — personality, prompts, playbook loader, openai, x-client, posting, mentions, memory, context, config
 
 `src/app/api/agent/` — cron + manual routes
