@@ -35,8 +35,10 @@ Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automaticall
 
 `GET /api/agent/me` — uses **only** `X_API_KEY` / `X_ACCESS_*` (not `X_BEARER_TOKEN`).
 
+**Temporarily open (no auth)** for internal validation — re-secure before leaving in production.
+
 ```bash
-curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://echonx.app/api/agent/me
+curl https://echonx.app/api/agent/me
 ```
 
 Copy `hint.agent_x_user_id` → Vercel `AGENT_X_USER_ID`. Remove this route after setup.

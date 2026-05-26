@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { getAgentXOAuthCredentials, isAgentCronAuthorized } from "@/lib/agent/config";
+import { getAgentXOAuthCredentials } from "@/lib/agent/config";
 import { getAgentUsersMe } from "@/lib/agent/x-client";
 
 export const runtime = "nodejs";
@@ -9,16 +8,10 @@ export const runtime = "nodejs";
  * Temporary helper: resolve AGENT_X_USER_ID for @echonagent OAuth tokens only.
  * Does NOT use X_BEARER_TOKEN (import/sync account).
  *
- * Auth: admin session or Authorization: Bearer CRON_SECRET
+ * TEMP: no auth — internal validation only. Re-enable admin/CRON_SECRET before production.
  * Remove this route after AGENT_X_USER_ID is set in Vercel.
  */
-export async function GET(request: Request) {
-  const session = await auth();
-  const isAdmin = session?.user.role === "admin";
-  if (!isAdmin && !isAgentCronAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: "Forbidden." }, { status: 403 });
-  }
-
+export async function GET() {
   const creds = getAgentXOAuthCredentials();
   if (!creds) {
     return NextResponse.json(
