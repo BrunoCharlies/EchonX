@@ -11,6 +11,17 @@ function percentEncode(value: string): string {
   );
 }
 
+/** OAuth 1.0a base URL (no query) + query params for the signature parameter string. */
+function splitOAuthUrl(url: string): { baseUrl: string; queryParams: Record<string, string> } {
+  const parsed = new URL(url);
+  const queryParams: Record<string, string> = {};
+  parsed.searchParams.forEach((value, key) => {
+    queryParams[key] = value;
+  });
+  parsed.search = "";
+  return { baseUrl: parsed.toString(), queryParams };
+}
+
 function oauth1Authorization(
   method: string,
   url: string,
@@ -81,7 +92,8 @@ async function xOAuthJson<T>(
 
 async function xOAuthGet<T>(creds: AgentXOAuthCredentials, path: string): Promise<T> {
   const url = `https://api.twitter.com/2${path}`;
-  const authorization = oauth1Authorization("GET", url, creds);
+  const { baseUrl, queryParams } = splitOAuthUrl(url);
+  const authorization = oauth1Authorization("GET", baseUrl, creds, queryParams);
   const res = await fetch(url, {
     method: "GET",
     headers: { Authorization: authorization },
