@@ -5,6 +5,14 @@
     {
       "path": "/api/cron/x-listening-sync",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/agent/cron-post",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/agent/cron-mentions",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
