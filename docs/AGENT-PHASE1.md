@@ -11,7 +11,7 @@ Autonomous social agent: posts on X, replies to mentions, memory in Supabase, dr
 1. Run migration `supabase/migrations/00026_agent_tables.sql` in Supabase SQL Editor.
 2. Set Vercel env:
    - `OPENAI_API_KEY`
-   - `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`
+   - `AGENT_X_API_KEY`, `AGENT_X_API_SECRET`, `AGENT_X_ACCESS_TOKEN`, `AGENT_X_ACCESS_SECRET`
    - `AGENT_X_USER_ID` (numeric X user id for the bot account)
    - `CRON_SECRET`
    - `AGENT_ENABLED=true` (or `agent_enabled` = `true` in `agent_settings`)
@@ -33,7 +33,7 @@ Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automaticall
 
 ## Temporary: resolve `AGENT_X_USER_ID` (@echonagent)
 
-`GET /api/agent/me` — uses **only** `X_API_KEY` / `X_ACCESS_*` (not `X_BEARER_TOKEN`).
+`GET /api/agent/me` — uses **only** `AGENT_X_*` OAuth vars (not `X_BEARER_TOKEN` for import).
 
 **Temporarily open (no auth)** for internal validation — re-secure before leaving in production.
 

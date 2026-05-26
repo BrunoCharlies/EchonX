@@ -18,7 +18,7 @@ export async function GET() {
       {
         ok: false,
         error:
-          "Missing agent OAuth env: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET.",
+          "Missing agent OAuth env: AGENT_X_API_KEY, AGENT_X_API_SECRET, AGENT_X_ACCESS_TOKEN, AGENT_X_ACCESS_SECRET.",
       },
       { status: 503 },
     );
