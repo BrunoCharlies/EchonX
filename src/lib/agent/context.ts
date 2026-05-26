@@ -17,6 +17,8 @@ export async function getAgentContext(): Promise<string> {
     (p) => `- ${p.name}: ${libraryPlanPriceLabel(p)} — ${p.description}`,
   ).join("\n");
 
+  const playbook = loadAgentPlaybook();
+
   return [
     `EchonX is a profile-first social listening platform (echonx.app). Official X account: ${ECHONX_OFFICIAL_X_MENTION}.`,
     "No infinite feed — users follow profiles and listen to posts as audio (Audiopost).",
